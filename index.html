@@ -202,7 +202,8 @@ ol li{margin-bottom:6px}
 </main>
 <script>
 {
-const isIGToken = () => $('token').value.trim().startsWith('IG');
+const cleanToken = () => ($('token').value || '').replace(/[\s"'`<>]+/g, '');
+const isIGToken = () => cleanToken().startsWith('IG');
 const apiBase = () => isIGToken() ? 'https://graph.instagram.com' : 'https://graph.facebook.com/v23.0';
 const userPath = () => isIGToken() ? 'me' : ($('igid').value.trim() || 'me');
 const $ = id => document.getElementById(id);
@@ -273,7 +274,7 @@ $('tpl').addEventListener('input', () => { store.set('tpl', tpls()); renderList(
 const tpls = () => $('tpl').value.split('\n').map(s => s.trim()).filter(Boolean);
 
 async function api(path, params = {}, method = 'GET') {
-  const token = $('token').value.trim();
+  const token = cleanToken();
   const q = new URLSearchParams({ ...params, access_token: token });
   const url = path.startsWith('http') ? path : `${apiBase()}/${path}`;
   const res = method === 'GET'
@@ -303,8 +304,8 @@ async function allPages(first, cap = 500) {
 
 async function load() {
   $('error').textContent = '';
-  if (!$('token').value.trim()) { $('error').textContent = '토큰을 먼저 붙여넣어줘.'; return; }
-  if ($('remember').checked) store.set('token', $('token').value.trim()); else store.del('token');
+  if (!cleanToken()) { $('error').textContent = '토큰을 먼저 붙여넣어줘.'; return; }
+  if ($('remember').checked) store.set('token', cleanToken()); else store.del('token');
   $('load').disabled = true;
   try {
     setStatus('계정 확인 중…');
