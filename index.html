@@ -58,17 +58,28 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 details summary{cursor:pointer;font-weight:600}
 ol li{margin-bottom:6px}
 .hide{display:none!important}
+.sub{display:none}.sub.open{display:block}
+#menu button{background:#fff;border-color:#e9c94a}
 @media(max-width:600px){header h1{font-size:24px}.vid{grid-template-columns:48px minmax(0,1fr)}.vid img{width:48px;height:48px}.vid .nums{grid-column:2;text-align:left}}
 </style>
 </head>
 <body>
 <header>
-  <h1>또띠 댓글함</h1>
-  <p>릴스 좋아요·댓글 요약 + 아직 답 안 단 댓글 모아서 바로 답글 달기</p>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+    <h1>또띠 댓글함</h1>
+    <button id="menuBtn" aria-expanded="false" style="background:#1f1b16;color:#fff;border:0">☰ 메뉴</button>
+  </div>
+  <nav id="menu" class="hide" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:12px">
+    <button data-open="summary">📊 요약</button>
+    <button data-open="fol">👥 팔로워 알림</button>
+    <button data-open="report">🗓 정기 리포트</button>
+    <button data-open="setup">🔑 연결 설정</button>
+  </nav>
+  <p id="conn">릴스 댓글 모아서 바로 답글 달기</p>
 </header>
 <main>
 
-<section class="card" id="setup">
+<section class="card sub open" id="setup">
   <h2>연결하기</h2>
   <div class="row">
     <div class="grow">
@@ -80,8 +91,8 @@ ol li{margin-bottom:6px}
       <input type="text" id="igid" value="17841404405169869" inputmode="numeric">
     </div>
     <div style="width:130px">
-      <label for="count">최근 영상 몇 개</label>
-      <input type="number" id="count" value="12" min="1" max="50">
+      <label for="count">불러올 릴스</label>
+      <select id="count"><option value="0">전체 릴스</option><option value="30">최근 30개</option><option value="12">최근 12개</option></select>
     </div>
   </div>
   <div class="row" style="margin-top:10px">
@@ -105,62 +116,6 @@ ol li{margin-bottom:6px}
     </ol>
     <p class="msg">토큰은 비밀번호랑 같아. 남한테 보내거나 캡처해서 올리지 마.</p>
   </details>
-</section>
-
-<section class="card hide" id="fol">
-  <h2>팔로워 알림</h2>
-  <div class="stats">
-    <div class="stat hot"><b id="folNow">-</b><span>지금 팔로워</span></div>
-    <div class="stat"><b id="folNext">-</b><span id="folNextLbl">다음 특별한 숫자</span></div>
-  </div>
-  <div id="folBanner" class="hide" style="margin-top:12px;padding:14px;border-radius:12px;background:var(--acc2);color:#fff;font-weight:700"></div>
-  <div class="row" style="margin-top:12px">
-    <label class="chk"><input type="checkbox" id="folAuto" checked> 자동 확인</label>
-    <div style="width:140px"><label for="folMin">몇 분마다</label><input type="number" id="folMin" value="10" min="2" max="120"></div>
-    <button id="folCheck">지금 확인</button>
-    <button id="folNoti">알림 허용하기</button>
-  </div>
-  <details style="margin-top:12px" open>
-    <summary>📱 핸드폰으로 알림 받기 (ntfy 앱)</summary>
-    <ol style="font-size:15px">
-      <li>핸드폰에 <b>ntfy</b> 앱 설치 (플레이스토어/앱스토어에서 "ntfy" 검색, 무료).</li>
-      <li>앱에서 <b>+</b> → 아래 주제 이름을 똑같이 입력하고 구독.</li>
-      <li>아래 <b>테스트 알림</b> 눌러서 폰에 오는지 확인.</li>
-    </ol>
-    <div class="row">
-      <div class="grow"><label for="ntfy">주제 이름 (남이 못 맞히게 길게)</label><input type="text" id="ntfy"></div>
-      <button id="ntfyTest">테스트 알림</button>
-    </div>
-    <label class="chk" style="margin-top:8px"><input type="checkbox" id="ntfyCmt"> 답 안 단 새 댓글이 생겨도 폰으로 알려줘</label>
-  </details>
-  <p class="msg" id="folMsg">2222·3333 같은 같은 숫자, 1234·4321 같은 연속 숫자에 도달하거나 그 바로 전(2221 등)이 되면 알려줘. 이 페이지를 켜둔 동안에만 확인해.</p>
-</section>
-
-<section class="card hide" id="report">
-  <h2>정기 리포트</h2>
-  <p class="msg">매일 <b>오전 11시 · 오후 5시 · 오후 10시</b>에 요약을 만들어서 폰(ntfy)으로 보내. 이 페이지가 켜져 있어야 해.</p>
-  <div class="row">
-    <label class="chk"><input type="checkbox" id="repOn" checked> 정기 리포트 켜기</label>
-    <button id="repNow">지금 리포트 만들기</button>
-    <button id="repSend">지금 폰으로 보내기</button>
-  </div>
-  <pre id="repBox" style="white-space:pre-wrap;background:var(--bg);border-radius:12px;padding:14px;margin-top:12px;font:15px/1.6 inherit"></pre>
-  <p class="msg" id="repMsg"></p>
-</section>
-
-<section class="card hide" id="summary">
-  <h2>요약</h2>
-  <div class="stats" id="stats"></div>
-  <h2 style="margin-top:20px">영상별</h2>
-  <div class="vids" id="vids"></div>
-  <h2 style="margin-top:20px">댓글에 많이 나온 말</h2>
-  <div class="words" id="words"></div>
-  <h2 style="margin-top:20px">댓글 많이 단 사람</h2>
-  <div class="words" id="fans"></div>
-  <div class="row" style="margin-top:16px">
-    <button id="copyAll">댓글 전체 복사 (클뚜한테 요약 맡기기용)</button>
-    <span class="msg" id="copyMsg"></span>
-  </div>
 </section>
 
 <section class="card hide" id="inbox">
@@ -198,6 +153,63 @@ ol li{margin-bottom:6px}
   </div>
   <div id="list" style="margin-top:8px"></div>
 </section>
+
+<section class="card hide sub" id="fol">
+  <h2>팔로워 알림</h2>
+  <div class="stats">
+    <div class="stat hot"><b id="folNow">-</b><span>지금 팔로워</span></div>
+    <div class="stat"><b id="folNext">-</b><span id="folNextLbl">다음 특별한 숫자</span></div>
+  </div>
+  <div id="folBanner" class="hide" style="margin-top:12px;padding:14px;border-radius:12px;background:var(--acc2);color:#fff;font-weight:700"></div>
+  <div class="row" style="margin-top:12px">
+    <label class="chk"><input type="checkbox" id="folAuto" checked> 자동 확인</label>
+    <div style="width:140px"><label for="folMin">몇 분마다</label><input type="number" id="folMin" value="10" min="2" max="120"></div>
+    <button id="folCheck">지금 확인</button>
+    <button id="folNoti">알림 허용하기</button>
+  </div>
+  <details style="margin-top:12px" open>
+    <summary>📱 핸드폰으로 알림 받기 (ntfy 앱)</summary>
+    <ol style="font-size:15px">
+      <li>핸드폰에 <b>ntfy</b> 앱 설치 (플레이스토어/앱스토어에서 "ntfy" 검색, 무료).</li>
+      <li>앱에서 <b>+</b> → 아래 주제 이름을 똑같이 입력하고 구독.</li>
+      <li>아래 <b>테스트 알림</b> 눌러서 폰에 오는지 확인.</li>
+    </ol>
+    <div class="row">
+      <div class="grow"><label for="ntfy">주제 이름 (남이 못 맞히게 길게)</label><input type="text" id="ntfy"></div>
+      <button id="ntfyTest">테스트 알림</button>
+    </div>
+    <label class="chk" style="margin-top:8px"><input type="checkbox" id="ntfyCmt"> 답 안 단 새 댓글이 생겨도 폰으로 알려줘</label>
+  </details>
+  <p class="msg" id="folMsg">2222·3333 같은 같은 숫자, 1234·4321 같은 연속 숫자에 도달하거나 그 바로 전(2221 등)이 되면 알려줘. 이 페이지를 켜둔 동안에만 확인해.</p>
+</section>
+
+<section class="card hide sub" id="report">
+  <h2>정기 리포트</h2>
+  <p class="msg">매일 <b>오전 11시 · 오후 5시 · 오후 10시</b>에 요약을 만들어서 폰(ntfy)으로 보내. 이 페이지가 켜져 있어야 해.</p>
+  <div class="row">
+    <label class="chk"><input type="checkbox" id="repOn" checked> 정기 리포트 켜기</label>
+    <button id="repNow">지금 리포트 만들기</button>
+    <button id="repSend">지금 폰으로 보내기</button>
+  </div>
+  <pre id="repBox" style="white-space:pre-wrap;background:var(--bg);border-radius:12px;padding:14px;margin-top:12px;font:15px/1.6 inherit"></pre>
+  <p class="msg" id="repMsg"></p>
+</section>
+
+<section class="card hide sub" id="summary">
+  <h2>요약</h2>
+  <div class="stats" id="stats"></div>
+  <h2 style="margin-top:20px">영상별</h2>
+  <div class="vids" id="vids"></div>
+  <h2 style="margin-top:20px">댓글에 많이 나온 말</h2>
+  <div class="words" id="words"></div>
+  <h2 style="margin-top:20px">댓글 많이 단 사람</h2>
+  <div class="words" id="fans"></div>
+  <div class="row" style="margin-top:16px">
+    <button id="copyAll">댓글 전체 복사 (클뚜한테 요약 맡기기용)</button>
+    <span class="msg" id="copyMsg"></span>
+  </div>
+</section>
+
 
 </main>
 <script>
@@ -311,7 +323,8 @@ async function load() {
     setStatus('계정 확인 중…');
     const me = await api(userPath(), { fields: isIGToken() ? 'id,user_id,username' : 'id,username' });
     store.set('igid', $('igid').value.trim());
-    const want = Math.max(1, Math.min(50, +$('count').value || 12));
+    const want = +$('count').value || Infinity;
+    store.set('count', $('count').value);
     setStatus('게시물 불러오는 중…');
     const mediaFields = 'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url';
     let media = [], page = await api(`${userPath()}/media`, { fields: mediaFields, limit: 50 });
@@ -321,18 +334,24 @@ async function load() {
       if (media.length >= want || !page.paging?.next) break;
       page = await api(page.paging.next);
     }
-    media = media.slice(0, want);
+    if (want !== Infinity) media = media.slice(0, want);
     const comments = [];
-    for (let i = 0; i < media.length; i++) {
-      const m = media[i];
-      if (!m.comments_count) continue;
-      setStatus(`댓글 불러오는 중… (${i + 1}/${media.length})`);
-      const first = await api(`${m.id}/comments`, { fields: 'id,text,username,timestamp,like_count,replies{id,text,username,timestamp}', limit: 50 });
-      const list = await allPages(first);
-      list.forEach(c => comments.push({ ...c, mediaId: m.id, replies: c.replies?.data || [] }));
-    }
+    const todo = media.filter(m => m.comments_count);
+    let doneN = 0;
+    const worker = async () => {
+      while (todo.length) {
+        const m = todo.shift();
+        const first = await api(`${m.id}/comments`, { fields: 'id,text,username,timestamp,like_count,replies.limit(50){id,text,username,timestamp}', limit: 50 });
+        const list = await allPages(first);
+        list.forEach(c => comments.push({ ...c, mediaId: m.id, replies: c.replies?.data || [] }));
+        setStatus(`댓글 불러오는 중… 릴스 ${++doneN}/${media.filter(x => x.comments_count).length}`);
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
     state = { me, media, comments, demo: false };
-    setStatus(`@${me.username} · 영상 ${media.length}개 · 댓글 ${comments.length}개 불러옴`);
+    setStatus(`@${me.username} · 릴스 ${media.length}개 · 댓글 ${comments.length}개 불러옴`);
+    $('conn').textContent = `@${me.username} 연결됨 · 릴스 ${media.length}개 · 댓글 ${num(comments.length)}개`;
+    $('setup').classList.remove('open');
     render();
   } catch (e) {
     $('error').textContent = '불러오기 실패: ' + e.message;
@@ -712,6 +731,22 @@ $('copyAsk').addEventListener('click', async () => {
   const text = `내 인스타 댓글에 달 답글을 내 말투로 하나씩 써줘. 답글 앞에 @아이디 붙여서, 바로 복붙할 수 있게.\n\n${STYLE_GUIDE}\n\n[답 안 단 댓글]\n${list}`;
   try { await navigator.clipboard.writeText(text); $('askMsg').textContent = '복사됐어! 클뚜한테 붙여넣어줘.'; }
   catch (e) { $('askMsg').textContent = '복사 실패 — 브라우저 권한을 확인해줘.'; }
+});
+
+// ---------- 메뉴 ----------
+$('count').value = store.get('count', '0');
+$('menuBtn').addEventListener('click', () => {
+  const open = $('menu').classList.toggle('hide') === false;
+  $('menuBtn').setAttribute('aria-expanded', open);
+});
+$('menu').addEventListener('click', e => {
+  const b = e.target.closest('[data-open]'); if (!b) return;
+  const sec = $(b.dataset.open);
+  if (b.dataset.open !== 'setup' && !state.me) { $('setup').classList.add('open'); $('setup').scrollIntoView({ behavior: 'smooth' }); $('error').textContent = '먼저 불러오기를 해줘.'; return; }
+  const willOpen = !sec.classList.contains('open');
+  document.querySelectorAll('.sub').forEach(x => x.classList.remove('open'));
+  if (willOpen) { sec.classList.add('open'); sec.scrollIntoView({ behavior: 'smooth' }); }
+  $('menu').classList.add('hide');
 });
 
 $('load').addEventListener('click', () => load().then(() => {
