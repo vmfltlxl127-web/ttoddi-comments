@@ -102,6 +102,7 @@ ol li{margin-bottom:6px}
   <div class="row" style="margin-top:12px">
     <button class="main" id="load">불러오기</button>
     <button id="demo">체험 모드 (가짜 데이터)</button>
+    <button id="fullLoad">전부 새로 받기</button>
   </div>
   <p class="msg" id="status"></p>
   <p class="err" id="error"></p>
@@ -314,18 +315,33 @@ async function allPages(first, cap = 500) {
   return out;
 }
 
-async function load() {
+// ---------- 캐시 (열자마자 바로 보이게) ----------
+const CACHE_KEY = 'cache_v1';
+function saveCache() {
+  if (state.demo || !state.me) return;
+  const slim = {
+    me: state.me, at: Date.now(),
+    media: state.media.map(({ id, caption, media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url }) => ({ id, caption: (caption || '').slice(0, 120), media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url })),
+    comments: state.comments.map(({ id, text, username, timestamp, like_count, mediaId, replies }) => ({ id, text, username, timestamp, like_count, mediaId, replies: (replies || []).map(r => ({ username: r.username })) }))
+  };
+  try { localStorage.setItem('ttd_' + CACHE_KEY, JSON.stringify(slim)); } catch (e) {}
+}
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
+const typing = () => [...document.querySelectorAll('#list textarea')].some(t => t.value.trim() || t === document.activeElement);
+
+async function load(opts = {}) {
+  const quiet = !!opts.quiet;
   $('error').textContent = '';
   if (!cleanToken()) { $('error').textContent = '토큰을 먼저 붙여넣어줘.'; return; }
   if ($('remember').checked) store.set('token', cleanToken()); else store.del('token');
   $('load').disabled = true;
   try {
-    setStatus('계정 확인 중…');
+    if (!quiet) setStatus('계정 확인 중…');
     const me = await api(userPath(), { fields: isIGToken() ? 'id,user_id,username' : 'id,username' });
     store.set('igid', $('igid').value.trim());
     const want = +$('count').value || Infinity;
     store.set('count', $('count').value);
-    setStatus('게시물 불러오는 중…');
+    if (!quiet) setStatus('게시물 불러오는 중…');
     const mediaFields = 'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,thumbnail_url,media_url';
     let media = [], page = await api(`${userPath()}/media`, { fields: mediaFields, limit: 50 });
     while (true) {
@@ -336,7 +352,17 @@ async function load() {
     }
     if (want !== Infinity) media = media.slice(0, want);
     const comments = [];
-    const todo = media.filter(m => m.comments_count);
+    const cached = store.get(CACHE_KEY, null);
+    const oldMedia = Object.fromEntries((cached?.media || []).map(m => [m.id, m]));
+    const oldBy = {};
+    (cached?.comments || []).forEach(c => (oldBy[c.mediaId] = oldBy[c.mediaId] || []).push(c));
+    // 댓글 수가 그대로인 릴스는 저장된 댓글 재사용
+    const todo = media.filter(m => {
+      if (!m.comments_count) return false;
+      const o = oldMedia[m.id];
+      if (!opts.full && o && o.comments_count === m.comments_count && oldBy[m.id]) { comments.push(...oldBy[m.id]); return false; }
+      return true;
+    });
     let doneN = 0;
     const worker = async () => {
       while (todo.length) {
@@ -344,11 +370,14 @@ async function load() {
         const first = await api(`${m.id}/comments`, { fields: 'id,text,username,timestamp,like_count,replies.limit(50){id,text,username,timestamp}', limit: 50 });
         const list = await allPages(first);
         list.forEach(c => comments.push({ ...c, mediaId: m.id, replies: c.replies?.data || [] }));
-        setStatus(`댓글 불러오는 중… 릴스 ${++doneN}/${media.filter(x => x.comments_count).length}`);
+        ++doneN; if (!quiet) setStatus(`새 댓글 확인 중… ${doneN}/${todoN}`);
       }
     };
+    const todoN = todo.length;
     await Promise.all([worker(), worker(), worker(), worker()]);
     state = { me, media, comments, demo: false };
+    saveCache();
+    if (quiet && typing()) { $('conn').textContent = `@${me.username} · 방금 확인 · 새 댓글은 답글 다 쓰고 나면 보여`; return; }
     setStatus(`@${me.username} · 릴스 ${media.length}개 · 댓글 ${comments.length}개 불러옴`);
     $('conn').textContent = `@${me.username} 연결됨 · 릴스 ${media.length}개 · 댓글 ${num(comments.length)}개`;
     $('setup').classList.remove('open');
@@ -733,6 +762,7 @@ $('copyAsk').addEventListener('click', async () => {
   catch (e) { $('askMsg').textContent = '복사 실패 — 브라우저 권한을 확인해줘.'; }
 });
 
+$('fullLoad').addEventListener('click', () => load({ full: true }));
 // ---------- 메뉴 ----------
 $('count').value = store.get('count', '0');
 $('menuBtn').addEventListener('click', () => {
@@ -755,7 +785,24 @@ $('load').addEventListener('click', () => load().then(() => {
   store.set('knownPending', [...knownPending].slice(-500));
   checkFol(); scheduleFol();
 }));
-if (store.get('token', '')) setTimeout(() => $('load').click(), 300);
+(function boot() {
+  const c = store.get(CACHE_KEY, null);
+  if (c && store.get('token', '')) {
+    state = { me: c.me, media: c.media, comments: c.comments, demo: false };
+    $('setup').classList.remove('open');
+    render();
+    $('conn').textContent = `@${c.me.username} · ${ago(c.at)} 확인 · 새 댓글 확인 중…`;
+    setTimeout(async () => {
+      await load({ quiet: true });
+      if (state.me && !state.demo) { pending().forEach(x => knownPending.add(x.id)); checkFol(); scheduleFol(); }
+      if (!$('conn').textContent.includes('답글 다 쓰고')) $('conn').textContent = `@${state.me.username} · 방금 확인 · 릴스 ${state.media.length}개 · 댓글 ${num(state.comments.length)}개`;
+    }, 100);
+  } else if (store.get('token', '')) setTimeout(() => $('load').click(), 300);
+})();
+// 앱으로 다시 돌아오면 조용히 새로 확인
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.me && !state.demo && Date.now() - (store.get(CACHE_KEY, {}).at || 0) > 60e3) load({ quiet: true });
+});
 $('demo').addEventListener('click', () => { demo(); notified = new Set(); checkFol(); scheduleFol(); });
 $('filterVid').addEventListener('change', renderList);
 $('sort').addEventListener('change', renderList);
