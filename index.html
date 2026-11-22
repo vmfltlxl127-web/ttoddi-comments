@@ -142,7 +142,7 @@ ol li{margin-bottom:6px}
   </div>
   <div class="row" style="margin-top:10px">
     <button id="likeAll" class="main">♥ 한번에 하트 누르기</button>
-    <span class="msg" id="likeMsg">선택한 영상(전체면 전부)의 댓글 중 태그 댓글·내 댓글 빼고 하트를 눌러.</span>
+    <span class="msg" id="likeMsg">선택한 영상(전체면 전부)의 댓글에 하트를 눌러. 태그 댓글도 포함, 내 댓글만 빼.</span>
   </div>
   <div id="likeConfirm" class="hide" style="margin-top:10px;padding:12px;border-radius:12px;background:var(--bg)">
     <span id="likeQ"></span>
@@ -411,8 +411,9 @@ function demo() {
 const setStatus = t => { $('status').textContent = t; };
 const myName = () => (state.me?.username || '').toLowerCase();
 const isMine = u => (u || '').toLowerCase() === myName();
+let replied = new Set(store.get('replied', []));
 const isTag = c => { const t = (c.text || '').trim(); return /^@[\w.]+/.test(t) && !t.toLowerCase().startsWith('@' + myName()); };
-const pending = () => state.comments.filter(c => !isMine(c.username) && !c.replies.some(r => isMine(r.username)) && !skipped.has(c.id) && !($('noTag').checked && isTag(c)));
+const pending = () => state.comments.filter(c => !isMine(c.username) && !c.replies.some(r => isMine(r.username)) && !skipped.has(c.id) && !replied.has(c.id) && !($('noTag').checked && isTag(c)));
 const mediaById = id => state.media.find(m => m.id === id);
 const fmtDate = s => { const d = new Date(s); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const short = (s, n = 40) => { s = (s || '(캡션 없음)').replace(/\s+/g, ' '); return s.length > n ? s.slice(0, n) + '…' : s; };
@@ -513,8 +514,9 @@ $('list').addEventListener('click', async e => {
     try {
       if (!state.demo) await api(`${id}/replies`, { message: text }, 'POST');
       let likedNote = '';
-      if ($('autoLike').checked) { const ok = await likeComment(id); likedNote = ok ? ' + ♥' : ' (하트는 실패)'; }
+      if ($('autoLike').checked) { const ok = await likeComment(id); likedNote = ok ? ' + ♥' : ` (하트 실패: ${/permission/i.test(likeErr) ? '토큰에 하트 권한이 없어. 🔑 연결 설정에서 새 토큰으로 바꿔줘' : likeErr})`; }
       c.replies.push({ username: state.me.username, text });
+      if (!state.demo) { replied.add(id); store.set('replied', [...replied].slice(-3000)); saveCache(); }
       box.innerHTML = `<span class="who">@${esc(c.username)}</span><div class="txt">${esc(c.text)}</div><div class="done">↳ ${esc(text)} — ${state.demo ? '(체험) ' : ''}답글 달았어${likedNote}</div>`;
       setTimeout(render, 1500);
     } catch (err) {
@@ -552,8 +554,8 @@ $('autoLike').addEventListener('change', () => store.set('autoLike', $('autoLike
 $('likeAll').addEventListener('click', () => {
   if (!state.me) { $('likeMsg').textContent = '먼저 불러오기를 해줘.'; return; }
   const f = $('filterVid').value;
-  likeQueue = state.comments.filter(c => (!f || c.mediaId === f) && !isMine(c.username) && !isTag(c) && !liked.has(c.id));
-  if (!likeQueue.length) { $('likeMsg').textContent = '하트 누를 댓글이 없어. (이미 다 눌렀거나 태그 댓글뿐이야)'; return; }
+  likeQueue = state.comments.filter(c => (!f || c.mediaId === f) && !isMine(c.username) && !liked.has(c.id));
+  if (!likeQueue.length) { $('likeMsg').textContent = '하트 누를 댓글이 없어. 이미 다 눌렀어!'; return; }
   const sec = Math.ceil(likeQueue.length * 2.5);
   $('likeQ').textContent = `댓글 ${likeQueue.length}개에 하트를 눌러. 인스타 스팸 감지를 피하려고 천천히 눌러서 약 ${sec >= 60 ? Math.ceil(sec / 60) + '분' : sec + '초'} 걸려.`;
   $('likeConfirm').classList.remove('hide');
