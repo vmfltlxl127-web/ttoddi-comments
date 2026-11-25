@@ -1,0 +1,53 @@
+name: 매일 리포트
+
+on:
+  schedule:
+    - cron: '7 2 * * *'    # 매일 오전 11:07 (한국 시간) — 리포트 보내기
+    - cron: '37 * * * *'   # 매시간 37분 — 좋아요·팔로워 기록
+  workflow_dispatch:        # Actions 화면에서 '지금 실행' 버튼
+    inputs:
+      mode:
+        description: 'report = 리포트 보내기 / snap = 기록만'
+        default: report
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stats
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: 기록 브랜치(stats) 가져오기
+        run: |
+          git fetch origin stats:stats 2>/dev/null && git show stats:snaps.json > snaps.json 2>/dev/null || echo "[]" > snaps.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 실행
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "7 2 * * *" ]; then MODE=report; else MODE=snap; fi
+          fi
+          node .github/report.mjs "$MODE" snaps.json
+      - name: 기록 저장 (stats 브랜치)
+        if: always()
+        run: |
+          [ -s snaps.json ] || exit 0
+          cp snaps.json /tmp/snaps.json
+          git config user.name "keysbrown-bot"
+          git config user.email "keysbrown-bot@users.noreply.github.com"
+          if git show-ref --quiet refs/heads/stats; then git checkout -q stats; else git checkout -q --orphan stats && git rm -rq --cached . && git clean -fdq; fi
+          cp /tmp/snaps.json snaps.json
+          git add snaps.json
+          git diff --cached --quiet || git commit -qm "기록 $(TZ=Asia/Seoul date '+%m/%d %H:%M')"
+          git push -q origin stats

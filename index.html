@@ -233,7 +233,7 @@ body:not(.ready) .needs{display:none}
     <div class="card"><pre class="rep" id="repBox"></pre></div>
     <p class="msg" id="repMsg"></p>
     <div class="list-card" style="margin-top:12px">
-      <div class="row"><span>매일 리포트<br><small style="color:var(--sub);font-size:12px">오전 11시 · 이 앱이 켜져 있을 때</small></span><input type="checkbox" class="sw" id="repOn" checked aria-label="매일 리포트"></div>
+      <div class="row"><span>매일 리포트<br><small style="color:var(--sub);font-size:12px">오전 11시쯤 · 앱이 꺼져 있어도 자동으로 와</small></span></div>
     </div>
   </section>
 
@@ -469,7 +469,7 @@ async function load(opts = {}) {
     if (quiet && typing()) { $('conn').textContent = `@${me.username} · 방금 확인 · 새 댓글은 답글 쓰고 나면 보여`; return; }
     setStatus(`@${me.username} · 릴스 ${media.length}개 · 댓글 ${comments.length}개 불러옴`);
     $('conn').textContent = `@${me.username} · 방금 확인 · 릴스 ${media.length} · 댓글 ${num(comments.length)}`;
-    render(); snapshot(); renderStats();
+    render(); snapshot(); renderStats(); loadServerSnaps();
   } catch (e) {
     $('error').textContent = '불러오기 실패: ' + e.message;
     setStatus('');
@@ -786,9 +786,6 @@ $('folNoti').addEventListener('click', async () => {
 });
 
 // ---------- 정기 리포트 ----------
-const SLOTS = [11];
-$('repOn').checked = store.get('repOn', true);
-$('repOn').addEventListener('change', () => store.set('repOn', $('repOn').checked));
 function buildReport() {
   const now = new Date();
   const media = [...state.media].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
@@ -831,20 +828,6 @@ async function makeReport(send) {
     $('repMsg').textContent = ok ? `폰으로 보냈어 (${r.snap.at})` : '폰 전송 실패 — ntfy 주제 이름을 확인해줘.';
   } else $('repMsg').textContent = '미리보기야. 보내려면 "지금 폰으로 보내기".';
 }
-function checkSchedule() {
-  if (!$('repOn').checked || !state.me || state.demo) return;
-  const now = new Date(), day = now.toDateString();
-  for (const h of SLOTS) {
-    const key = `${day}-${h}`;
-    const slotT = new Date(now); slotT.setHours(h, 0, 0, 0);
-    if (now >= slotT && now - slotT < 2 * 3600e3 && !store.get('sent_' + key, false)) {
-      store.set('sent_' + key, true);
-      makeReport(true);
-      break;
-    }
-  }
-}
-setInterval(checkSchedule, 60e3);
 $('repNow').addEventListener('click', () => makeReport(false));
 $('repSend').addEventListener('click', () => makeReport(true));
 
@@ -1026,8 +1009,18 @@ function snapshot() {
 }
 const dayStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+// 서버(GitHub)가 매시간 남긴 기록 — 앱이 꺼져 있던 시간도 채워줌
+let serverSnaps = [];
+async function loadServerSnaps() {
+  try {
+    const r = await fetch('https://raw.githubusercontent.com/vmfltlxl127-web/ttoddi-comments/stats/snaps.json?t=' + Math.floor(Date.now() / 300e3), { cache: 'no-store' });
+    if (r.ok) { const d = await r.json(); if (Array.isArray(d)) { serverSnaps = d; if (state.me) renderStats(); } }
+  } catch (e) {}
+}
+loadServerSnaps();
+const allSnaps = () => [...store.get('snaps', []), ...serverSnaps].sort((a, b) => a.t - b.t);
 function dayStats(days, mediaIds) {
-  const snaps = state.demo ? demoSnaps() : store.get('snaps', []);
+  const snaps = state.demo ? demoSnaps() : allSnaps();
   const ids = new Set(mediaIds);
   return days.map(d0 => {
     const d1 = d0 + 864e5;
@@ -1083,8 +1076,8 @@ function renderStats() {
   const vals = rows.map(r => r[stMetric] ?? 0), max = Math.max(1, ...vals);
   $('chart').style.gridTemplateColumns = `repeat(${rows.length}, minmax(0,1fr))`;
   $('chart').innerHTML = rows.map((r, i) => `<div class="bar-col"><span class="bar-v">${r[stMetric] == null ? '' : num(r[stMetric])}</span><div class="bar ${i === rows.length - 1 ? 'today' : ''}" style="height:${Math.max(4, (r[stMetric] ?? 0) / max * 100)}%"></div><span class="bar-d">${i === rows.length - 1 ? '오늘' : (rows.length > 8 ? new Date(r.d0).getDate() : DOW[new Date(r.d0).getDay()])}</span></div>`).join('');
-  const snaps = store.get('snaps', []);
-  $('stNote').textContent = state.demo ? '체험 모드 숫자야' : snaps.length ? `좋아요·팔로워는 ${fmtDate(new Date(snaps[0].t).toISOString())}부터 기록 중이야. 인스타가 날짜별 숫자를 안 줘서 앱을 열 때마다 기록해. 첫날은 기록 시작 이후 숫자만 나와 · 팔로워는 계정 전체 기준` : '좋아요·팔로워는 오늘부터 기록돼';
+  const snaps = allSnaps();
+  $('stNote').textContent = state.demo ? '체험 모드 숫자야' : snaps.length ? `좋아요·팔로워는 ${fmtDate(new Date(snaps[0].t).toISOString())}부터 기록 중이야. 인스타가 날짜별 숫자를 안 줘서 매시간 기록해 (앱이 꺼져 있어도). 첫날은 기록 시작 이후 숫자만 나와 · 팔로워는 계정 전체 기준` : '좋아요·팔로워는 오늘부터 기록돼';
   if (stScope !== 'all') {
     $('stList').innerHTML = `<div class="li head"><span>날짜</span><span>♥</span><span>댓글</span><span>팔로워</span></div>` + [...rows].reverse().map(r => `<div class="li"><span>${new Date(r.d0).getMonth() + 1}/${new Date(r.d0).getDate()} ${DOW[new Date(r.d0).getDay()]}</span><span>${fmt(r.like)}</span><span>${fmt(r.cmt)}</span><span>${fmt(r.fol)}</span></div>`).join('');
   } else {
