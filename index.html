@@ -542,7 +542,7 @@ let likeErr = '';
 async function likeComment(id) {
   if (state.demo) { liked.add(id); return true; }
   try {
-    await api(`${userPath()}/likes`, { comment_id: id }, 'POST');
+    await api(`${isIGToken() ? 'https://graph.instagram.com' : 'https://graph.facebook.com/v26.0'}/${userPath()}/likes`, { comment_id: id }, 'POST');
     liked.add(id); store.set('liked', [...liked].slice(-3000));
     return true;
   } catch (e) { likeErr = e.message; return false; }
