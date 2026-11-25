@@ -96,6 +96,17 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 .tc .rbox button{flex:none;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:700;padding:0 14px}
 .tc.wait{box-shadow:inset 3px 0 0 var(--y)}
 .chip.ghost.small{min-height:30px;padding:4px 10px;font-size:12px}
+/* 답글함 카드 (영상 댓글 창 스타일) */
+.cmt.wait{box-shadow:inset 4px 0 0 var(--y)}
+.cmt .vt2{font-size:12px;color:var(--mute);font-weight:600;margin-bottom:-6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmt .wtag{margin-left:6px;background:#FFF3BF;color:#8A6A00;font-size:11px;font-weight:700;border-radius:999px;padding:2px 7px}
+.cmt .txt2{font-size:16px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap;cursor:pointer}
+.cmt .rp{border-left:2px solid var(--line);margin:0 0 0 4px;padding:2px 0 2px 10px;font-size:13px;overflow-wrap:anywhere}
+.cmt .rp.me{border-color:var(--p)}.cmt .rp b{font-size:12px}
+.cmt .rbox{display:flex;gap:6px}.cmt .rbox textarea{flex:1;min-height:44px;height:44px;padding:10px 12px;font-size:15px;background:var(--bg)}
+.cmt .rbox button{flex:none;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:700;padding:0 16px;cursor:pointer}
+.cmt .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.cmt .acts .hb{margin-top:0}
+.chip.sm{min-height:32px;padding:5px 11px;font-size:12.5px}
 .empty{text-align:center;padding:40px 0;color:var(--sub)}
 .blob-big{width:84px;height:84px;margin:0 auto 12px;border-radius:30px 38px 32px 40px;background:var(--y);transform:rotate(8deg);position:relative}
 .blob-big::before,.blob-big::after{content:"";position:absolute;top:34px;width:10px;height:13px;border-radius:6px;background:var(--ink)}
@@ -207,6 +218,7 @@ body:not(.ready) .needs{display:none}
       <label for="tpl">빠른 답글 문구 · 한 줄에 하나</label>
       <textarea id="tpl" style="min-height:130px"></textarea>
     </div>
+    <div class="seg" id="inboxSeg" role="tablist"><button type="button" data-mode="wait" class="on">답 대기 <span id="segWaitN"></span></button><button type="button" data-mode="all">전체 댓글</button></div>
     <div id="list"></div>
   </section>
 
@@ -555,40 +567,54 @@ function cmtUrl(c) {
   if (!m?.permalink || m.permalink === '#') return '';
   return m.permalink;
 }
+let inboxMode = store.get('inboxMode', 'wait'); // 기본: 답 대기만
 function renderList() {
   if (!state.me) return;
+  document.querySelectorAll('#inboxSeg [data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === inboxMode));
   const f = $('filterVid').value;
-  let list = pending().filter(c => !f || c.mediaId === f);
+  const pend = pending(), pendSet = new Set(pend);
+  let list = inboxMode === 'wait' ? pend : state.comments.filter(c => !isMine(c.username));
+  list = list.filter(c => !f || c.mediaId === f);
   list.sort((a, b) => $('sort').value === 'new' ? b.timestamp.localeCompare(a.timestamp) : a.timestamp.localeCompare(b.timestamp));
-  $('pendCount').textContent = pending().length;
-  list.forEach(c => { if (!c._sug) c._sug = suggest(c); });
+  if (inboxMode === 'all') list = list.slice(0, 200);
+  $('pendCount').textContent = pend.length; $('segWaitN').textContent = pend.length;
   $('list').innerHTML = list.map(c => {
-    const sug = c._sug.list;
-    const quick = tpls().filter(t => !sug.includes(t));
-    const url = cmtUrl(c);
-    const draft = drafts[c.id] || '';
-    return `<article class="cmt" data-id="${esc(c.id)}">
-      <div class="cmt-top"><b>@${esc(c.username)}</b><span>${liked.has(c.id) ? '<span class="hb on" style="margin:0 6px 0 0;padding:2px 8px">' + HEART + '</span>' : ''}${fmtDate(c.timestamp)}</span></div>
-      <div class="cap">${esc(titleOf(mediaById(c.mediaId), 28))}</div>
-      ${url ? `<a class="txt" href="${esc(url)}" target="_blank" rel="noopener" data-tip="누르면 이 댓글이 달린 릴스로 가">${esc(c.text)}</a>` : `<div class="txt">${esc(c.text)}</div>`}
-      <div class="sug-head"><span>추천 답글</span><button type="button" class="mini" data-act="reroll" data-tip="다른 추천 답글로 바꿔줘" aria-label="다른 추천">↻</button></div>
-      <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}</div>
-      <div class="chips">${quick.map(t => `<button type="button" class="chip" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost" data-act="tpl" data-tip="자주 쓰는 답글 문구를 고쳐">✎ 문구 편집</button><button type="button" class="chip ghost" data-thread="${esc(c.mediaId)}" data-tip="이 영상 댓글 전체를 최신순으로 봐">💬 영상 댓글</button></div>
-      <textarea placeholder="답글 쓰기…" aria-label="답글">${esc(draft)}</textarea>
-      <div class="pair">
-        <button class="btn primary" data-act="send" data-tip="인스타에 답글을 올려 (설정에서 켜두면 하트도 같이)">답글 전송</button>
-        <button class="btn soft" data-act="skip" data-tip="답 안 하고 목록에서 빼">생략하기</button>
-      </div>
-      <p class="msg" data-role="msg"></p>
-    </article>`;
-  }).join('') || '<div class="empty"><div class="blob-big"></div><p>답 안 단 댓글이 없어. 다 했다!</p></div>';
+    const wait = pendSet.has(c);
+    const reps = (c.replies || []).slice().sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    const head = `<div class="vt2">🎬 ${esc(titleOf(mediaById(c.mediaId), 30))}</div>
+      <div class="cmt-top"><b>@${esc(c.username)}</b><span>${fmtDate(c.timestamp)}${wait ? '<span class="wtag">답글 대기</span>' : ''}</span></div>
+      <div class="txt2" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">${esc(c.text)}</div>
+      ${reps.map(r => `<div class="rp ${isMine(r.username) ? 'me' : ''}"><b>@${esc(r.username)}</b> ${esc(r.text || '')}</div>`).join('')}`;
+    if (!wait) return `<article class="cmt" data-id="${esc(c.id)}">${head}
+      <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
+      <p class="msg" data-role="msg"></p></article>`;
+    if (!c._sug) c._sug = suggest(c);
+    const sug = c._sug.list, quick = tpls().filter(t => !sug.includes(t));
+    return `<article class="cmt wait" data-id="${esc(c.id)}">${head}
+      <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot sm" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}<button type="button" class="chip sm" data-act="more">더보기</button></div>
+      <div class="chips hide" data-role="more">${quick.map(t => `<button type="button" class="chip sm" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost small" data-act="reroll">↻ 다른 추천</button><button type="button" class="chip ghost small" data-act="tpl">✎ 문구 편집</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
+      <div class="rbox"><textarea placeholder="답글 쓰기…" aria-label="답글">${esc(drafts[c.id] || '')}</textarea><button type="button" data-act="send">전송</button></div>
+      <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="skip">생략</button></div>
+      <p class="msg" data-role="msg"></p></article>`;
+  }).join('') || `<div class="empty"><div class="blob-big"></div><p>${inboxMode === 'wait' ? '답 안 단 댓글이 없어. 다 했다!' : '댓글이 없어'}</p></div>`;
 }
+$('inboxSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode]'); if (!b) return;
+  inboxMode = b.dataset.mode; store.set('inboxMode', inboxMode); renderList(); window.scrollTo({ top: $('inboxSeg').offsetTop - 10 });
+});
 
 $('list').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   const box = b.closest('.cmt'); if (!box) return; const id = box.dataset.id;
   const ta = box.querySelector('textarea'), msg = box.querySelector('[data-role=msg]');
   const c = state.comments.find(x => x.id === id);
+  if (b.dataset.like) { b.disabled = true; const ok = await likeComment(c.id); ok ? renderList() : (b.disabled = false, flash('하트 실패: ' + likeErr)); return; }
+  if (b.dataset.act === 'more') { box.querySelector('[data-role=more]').classList.toggle('hide'); b.textContent = b.textContent === '더보기' ? '접기' : '더보기'; return; }
+  if (b.dataset.act === 'open') {
+    if (box.querySelector('.rbox')) return;
+    box.querySelector('.acts').insertAdjacentHTML('beforebegin', `<div class="rbox"><textarea aria-label="답글">@${esc(c.username)} </textarea><button type="button" data-act="send">전송</button></div>`);
+    const t = box.querySelector('textarea'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); return;
+  }
   if (b.dataset.act === 'reroll') { c._sug = suggest(c); renderList(); return; }
   if (b.dataset.act === 'sug') {
     ta.value = `@${c.username} ${c._sug.list[+b.dataset.i]}`; ta.focus(); return;
@@ -609,7 +635,8 @@ $('list').addEventListener('click', async e => {
       c.replies.push({ username: state.me.username, text, timestamp: new Date().toISOString() });
       if (!state.demo) { replied.add(id); store.set('replied', [...replied].slice(-3000)); saveCache(); }
       delete drafts[id];
-      box.innerHTML = `<div class="cmt-top"><b>@${esc(c.username)}</b></div><div class="txt">${esc(c.text)}</div><div class="done">↳ ${esc(text)}<br><small>${state.demo ? '(체험) ' : ''}답글 완료${likedNote}</small></div>`;
+      box.classList.remove('wait');
+      box.innerHTML = `<div class="vt2">🎬 ${esc(titleOf(mediaById(c.mediaId), 30))}</div><div class="cmt-top"><b>@${esc(c.username)}</b></div><div class="txt2">${esc(c.text)}</div><div class="done">↳ ${esc(text)}<br><small>${state.demo ? '(체험) ' : ''}답글 완료${likedNote}</small></div>`;
       saveCache(); setTimeout(render, 1500);
     } catch (err) {
       b.disabled = false; msg.innerHTML = `<span class="err">${esc(err.message)}</span>`;
@@ -932,7 +959,12 @@ function renderThread() {
     </div>`;
   }).join('') || '<p class="msg">댓글이 없어</p>';
 }
-document.addEventListener('click', e => { const b = e.target.closest('[data-thread]'); if (b) { e.preventDefault(); openThread(b.dataset.thread); } });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-thread]'); if (!b) return;
+  e.preventDefault(); openThread(b.dataset.thread);
+  const fid = b.dataset.focus;
+  if (fid) setTimeout(() => { const el = $('thBody').querySelector(`.tc[data-id="${CSS.escape(fid)}"]`); if (el) { el.scrollIntoView({ block: 'center' }); el.style.outline = '2px solid var(--p)'; setTimeout(() => el.style.outline = '', 1800); } }, 60);
+});
 $('thClose').addEventListener('click', () => { if (history.state && history.state.th) history.back(); else closeThread(); });
 window.addEventListener('popstate', () => { if (thMedia) closeThread(); });
 $('thBody').addEventListener('click', async e => {
