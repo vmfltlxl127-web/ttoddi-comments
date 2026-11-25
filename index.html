@@ -12,14 +12,14 @@
 <style>
 :root{--bg:#F4F2FA;--card:#fff;--ink:#17151F;--sub:#6B6780;--mute:#9A96AC;--p:#6C3CE0;--pd:#3B1E8F;--pl:#EEE8FD;--y:#FFD43B;--line:#ECE8F5;--red:#E5484D}
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
-html{background:#fff}
+html{background:#E8E6EE}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.5 "Pretendard Variable",Pretendard,system-ui,sans-serif;letter-spacing:-0.03em;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 button,input,select,textarea{font:inherit;letter-spacing:inherit;color:inherit}
 a{color:var(--p)}
 .wrap{max-width:560px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 18px 0}
-.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.top{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
 .logo{font:700 26px/1 "Space Grotesk",sans-serif;letter-spacing:-0.03em}
-.conn{font-size:12px;color:var(--sub);text-align:right}
+.conn{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .view{display:none}.view.on{display:block}
 h2{font-size:24px;font-weight:800;margin:4px 0 12px}
 .card{background:var(--card);border-radius:22px;padding:18px;margin-bottom:12px}
@@ -72,6 +72,7 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 .blob-big::before,.blob-big::after{content:"";position:absolute;top:34px;width:10px;height:13px;border-radius:6px;background:var(--ink)}
 .blob-big::before{left:28px}.blob-big::after{right:28px}
 .seg{background:#E6E1F3;border-radius:14px;padding:4px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin-bottom:10px}
+.seg3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .seg button{height:38px;border:0;border-radius:11px;background:transparent;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer}
 .seg button.on{background:var(--card);color:var(--ink);font-weight:800}
 .pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -115,7 +116,7 @@ input.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:
 input.sw:checked{background:var(--p)}input.sw:checked::after{transform:translateX(20px)}
 details.help summary{cursor:pointer;color:var(--sub);font-size:13px;padding:12px 2px}
 details.help ol{font-size:13px;color:var(--sub);padding-left:18px;margin:0 0 12px}
-nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(#fff calc(100% - env(safe-area-inset-bottom)),#E8E6EE 0);box-shadow:0 calc(-1 * env(safe-area-inset-bottom)) 0 0 transparent;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
 .tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mute);cursor:pointer;padding:4px 0}
 .tab svg{width:34px;height:34px;filter:grayscale(1);opacity:.45;transition:transform .15s,opacity .15s}
 .tab.on{color:var(--ink);font-weight:800}
@@ -132,7 +133,7 @@ body:not(.ready) .needs{display:none}
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="logo">Keysbrown</div>
+    <div class="logo" style="display:flex;align-items:center;gap:10px"><img src="logo.png" alt="" width="40" height="40" style="border-radius:12px;background:#fff">Keysbrown</div>
     <div class="conn" id="conn">연결 전</div>
   </div>
 
@@ -174,9 +175,10 @@ body:not(.ready) .needs{display:none}
       <div class="fol"><div><small>팔로워</small><br><b id="folNow">-</b></div><div style="text-align:right"><small id="folNextLbl">다음 특별한 숫자</small><br><b id="folNext" style="font-size:18px">-</b></div></div>
       <div class="banner hide" id="folBanner"></div>
     </div>
-    <div class="seg"><button data-scope="latest">최신 영상</button><button data-scope="all">전체 영상</button></div>
+    <div class="seg seg3"><button data-scope="latest">최신 영상</button><button data-scope="pick">영상 선택</button><button data-scope="all">전체 영상</button></div>
+    <select id="stVid" class="hide" aria-label="영상 고르기" style="margin-bottom:10px;background:#fff"></select>
     <div class="scope-name" id="stScopeName"></div>
-    <div class="pills"><button data-period="up" data-tip="최신 영상이 올라온 날부터 오늘까지 (최대 14일)">업로드 이후</button><button data-period="7">최근 7일</button></div>
+    <div class="pills"><button data-period="up" data-tip="그 영상이 올라온 날부터 오늘까지 (최대 14일)">업로드 이후</button><button data-period="7">최근 7일</button></div>
     <div class="kpi"><div><small>오늘 좋아요</small><b id="kLike">–</b></div><div><small>오늘 댓글</small><b id="kCmt">–</b></div><div><small>오늘 팔로워</small><b id="kFol">–</b></div></div>
     <div class="card">
       <div class="pills" style="margin:0"><button data-metric="like">좋아요</button><button data-metric="cmt">댓글</button><button data-metric="fol" data-tip="팔로워는 인스타가 영상별로 안 알려줘서 계정 전체 기준">팔로워</button></div>
@@ -421,9 +423,9 @@ async function load(opts = {}) {
     await Promise.all([worker(), worker(), worker(), worker()]);
     state = { me, media, comments, demo: false };
     saveCache();
-    if (quiet && typing()) { $('conn').textContent = `@${me.username} · 방금 확인 · 새 댓글은 답글 다 쓰고 나면 보여`; return; }
+    if (quiet && typing()) { $('conn').textContent = `@${me.username} · 방금 확인 · 새 댓글은 답글 쓰고 나면 보여`; return; }
     setStatus(`@${me.username} · 릴스 ${media.length}개 · 댓글 ${comments.length}개 불러옴`);
-    $('conn').textContent = `@${me.username} 연결됨 · 릴스 ${media.length}개 · 댓글 ${num(comments.length)}개`;
+    $('conn').textContent = `@${me.username} · 방금 확인 · 릴스 ${media.length} · 댓글 ${num(comments.length)}`;
     render(); snapshot(); renderStats();
   } catch (e) {
     $('error').textContent = '불러오기 실패: ' + e.message;
@@ -802,7 +804,7 @@ setTimeout(function boot() {
     setTimeout(async () => {
       await load({ quiet: true });
       if (state.me && !state.demo) { pending().forEach(x => knownPending.add(x.id)); checkFol(); scheduleFol(); }
-      if (!$('conn').textContent.includes('답글 다 쓰고')) $('conn').textContent = `@${state.me.username} · 방금 확인 · 릴스 ${state.media.length}개 · 댓글 ${num(state.comments.length)}개`;
+      if (!$('conn').textContent.includes('답글 다 쓰고')) $('conn').textContent = `@${state.me.username} · 방금 확인 · 릴스 ${state.media.length} · 댓글 ${num(state.comments.length)}`;
     }, 100);
   } else if (store.get('token', '')) setTimeout(() => $('load').click(), 300);
   else go('set');
@@ -895,8 +897,13 @@ function demoSnaps() {
 function renderStats() {
   if (!state.me) return;
   const media = [...state.media].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  const latest = media[0];
-  const ids = stScope === 'latest' && latest ? [latest.id] : media.map(m => m.id);
+  const sel = $('stVid');
+  const cur = sel.value || store.get('stVid', '');
+  sel.innerHTML = media.map(m => `<option value="${esc(m.id)}">${esc(fmtDate(m.timestamp).split(' ')[0])} · ${esc(short(m.caption, 30))}</option>`).join('');
+  sel.value = media.some(m => m.id === cur) ? cur : (media[0]?.id || '');
+  sel.classList.toggle('hide', stScope !== 'pick');
+  const latest = stScope === 'pick' ? (media.find(m => m.id === sel.value) || media[0]) : media[0];
+  const ids = stScope !== 'all' && latest ? [latest.id] : media.map(m => m.id);
   const today = dayStart(Date.now());
   let n = 7;
   if (stPeriod === 'up' && latest) n = Math.min(14, Math.max(1, Math.round((today - dayStart(latest.timestamp)) / 864e5) + 1));
@@ -907,20 +914,21 @@ function renderStats() {
   document.querySelectorAll('[data-scope]').forEach(b => b.classList.toggle('on', b.dataset.scope === stScope));
   document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('on', b.dataset.period === stPeriod));
   document.querySelectorAll('[data-metric]').forEach(b => b.classList.toggle('on', b.dataset.metric === stMetric));
-  $('stScopeName').textContent = stScope === 'latest' && latest ? short(latest.caption, 26) : `릴스 ${media.length}개 전체`;
+  $('stScopeName').textContent = stScope === 'all' ? `릴스 ${media.length}개 전체` : stScope === 'latest' && latest ? short(latest.caption, 26) : '';
   $('kLike').textContent = fmt(t.like); $('kCmt').textContent = fmt(t.cmt); $('kFol').textContent = fmt(t.fol);
   const vals = rows.map(r => r[stMetric] ?? 0), max = Math.max(1, ...vals);
   $('chart').style.gridTemplateColumns = `repeat(${rows.length}, minmax(0,1fr))`;
   $('chart').innerHTML = rows.map((r, i) => `<div class="bar-col"><span class="bar-v">${r[stMetric] == null ? '' : num(r[stMetric])}</span><div class="bar ${i === rows.length - 1 ? 'today' : ''}" style="height:${Math.max(4, (r[stMetric] ?? 0) / max * 100)}%"></div><span class="bar-d">${i === rows.length - 1 ? '오늘' : (rows.length > 8 ? new Date(r.d0).getDate() : DOW[new Date(r.d0).getDay()])}</span></div>`).join('');
   const snaps = store.get('snaps', []);
   $('stNote').textContent = state.demo ? '체험 모드 숫자야' : snaps.length ? `좋아요·팔로워는 ${fmtDate(new Date(snaps[0].t).toISOString()).split(' ')[0]}부터 기록 중 · 팔로워는 계정 전체 기준` : '좋아요·팔로워는 오늘부터 기록돼';
-  if (stScope === 'latest') {
+  if (stScope !== 'all') {
     $('stList').innerHTML = `<div class="li head"><span>날짜</span><span>♥</span><span>댓글</span><span>팔로워</span></div>` + [...rows].reverse().map(r => `<div class="li"><span>${new Date(r.d0).getMonth() + 1}/${new Date(r.d0).getDate()} ${DOW[new Date(r.d0).getDay()]}</span><span>${fmt(r.like)}</span><span>${fmt(r.cmt)}</span><span>${fmt(r.fol)}</span></div>`).join('');
   } else {
     const per = media.map(m => { const r = dayStats([today], [m.id])[0]; return { m, r }; }).sort((a, b) => ((b.r.like ?? 0) + b.r.cmt * 5) - ((a.r.like ?? 0) + a.r.cmt * 5));
     $('stList').innerHTML = `<div class="li head"><span>오늘 영상별</span><span>♥</span><span>댓글</span></div>` + per.map(({ m, r }) => `<a class="li vid" href="${esc(m.permalink || '#')}" target="_blank" rel="noopener"><span class="vt">${m.thumbnail_url ? `<img src="${esc(m.thumbnail_url)}" alt="" loading="lazy">` : '<i></i>'}<em>${esc(short(m.caption, 22))}</em></span><span>${fmt(r.like)}</span><span>${fmt(r.cmt)}</span></a>`).join('');
   }
 }
+$('stVid').addEventListener('change', () => { store.set('stVid', $('stVid').value); renderStats(); });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-scope],[data-period],[data-metric]'); if (!b) return;
   if (b.dataset.scope) { stScope = b.dataset.scope; store.set('stScope', stScope); }
