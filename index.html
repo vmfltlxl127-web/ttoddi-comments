@@ -125,7 +125,7 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(#fff 
 #tip.on{opacity:1}
 #splash{position:fixed;inset:0;z-index:50;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .35s}
 #splash.off{opacity:0;pointer-events:none}
-#splash img{width:168px;height:168px;animation:pop .6s ease-out}
+#splash img{width:180px;height:auto;animation:pop .6s ease-out}
 #splash .dots{display:flex;gap:6px}#splash .dots i{width:8px;height:8px;border-radius:50%;background:#17151F;opacity:.2;animation:blink 1s infinite}
 #splash .dots i:nth-child(2){animation-delay:.15s}#splash .dots i:nth-child(3){animation-delay:.3s}
 @keyframes pop{from{transform:scale(.85) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
@@ -138,10 +138,10 @@ body:not(.ready) .needs{display:none}
 </style>
 </head>
 <body>
-<div id="splash" aria-hidden="true"><img src="logo.png" alt=""><div class="dots"><i></i><i></i><i></i></div></div>
+<div id="splash" aria-hidden="true"><img src="splash.png" alt=""><div class="dots"><i></i><i></i><i></i></div></div>
 <div class="wrap">
   <div class="top">
-    <div class="logo" style="display:flex;align-items:center;gap:10px"><img src="logo.png" alt="" width="40" height="40" style="border-radius:12px;background:#fff">Keysbrown</div>
+    <div class="logo">Keysbrown</div>
     <div class="conn" id="conn">연결 전</div>
   </div>
 
