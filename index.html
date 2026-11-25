@@ -590,7 +590,7 @@ function renderList() {
       <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <p class="msg" data-role="msg"></p></article>`;
     if (!c._sug) c._sug = suggest(c);
-    if (!c._sug3) { const em = (c.text || '').match(/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu); const mine = em ? em.join('') : ''; c._sug3 = (mine ? [mine, ...c._sug.list.filter(t => t !== mine)] : c._sug.list).slice(0, 3); }
+    if (!c._sug3) { const em = (c.text || '').match(/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu); const mine = em ? em[0] : ''; /* 댓글 이모지 중 첫 번째 하나만 */ c._sug3 = (mine ? [mine, ...c._sug.list.filter(t => t !== mine)] : c._sug.list).slice(0, 3); }
     c._sug.list = c._sug3;
     const sug = c._sug.list, quick = tpls().filter(t => !sug.includes(t));
     return `<article class="cmt wait" data-id="${esc(c.id)}">${head}
@@ -619,10 +619,15 @@ $('list').addEventListener('click', async e => {
     const t = box.querySelector('textarea'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); return;
   }
   if (b.dataset.act === 'reroll') { c._sug = suggest(c); delete c._sug3; renderList(); return; }
-  if (b.dataset.act === 'sug') {
-    ta.value = `@${c.username} ${c._sug.list[+b.dataset.i]}`; ta.focus(); return;
+  if (b.dataset.act === 'sug' || b.dataset.act === 'quick') {
+    const t = b.dataset.act === 'sug' ? c._sug.list[+b.dataset.i] : b.dataset.t;
+    const cur = ta.value.trim(), base = `@${c.username}`;
+    // 내가 쓴 글이 있으면 뒤에 붙이고, 비었거나 추천만 들어있으면 바꾸기
+    if (!cur || cur === base || (cur === box.dataset.last && box.dataset.app !== '1')) { ta.value = `${base} ${t}`; box.dataset.app = '0'; }
+    else { ta.value = ta.value.replace(/\s+$/, '') + (/^\p{Extended_Pictographic}/u.test(t) ? '' : ' ') + t; box.dataset.app = '1'; }
+    box.dataset.last = ta.value.trim(); drafts[id] = ta.value;
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); return;
   }
-  if (b.dataset.act === 'quick') { ta.value = `@${c.username} ${b.dataset.t}`; ta.focus(); return; }
   if (b.dataset.act === 'tpl') { $('tplSheet').classList.toggle('hide'); if (!$('tplSheet').classList.contains('hide')) $('tpl').focus(); return; }
   if (b.dataset.act === 'skip') {
     skipped.add(id); store.set('skipped', [...skipped]); render(); return;
