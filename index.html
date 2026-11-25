@@ -26,6 +26,7 @@ h2{font-size:24px;font-weight:800;margin:4px 0 12px}
 .hero{background:var(--p);color:#fff;border-radius:24px;padding:18px 18px 18px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;overflow:hidden}
 .hero small{font-size:13px;opacity:.85}
 .hero b{display:block;font-size:44px;font-weight:900;line-height:1.05}
+.hero .hstat{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}.hero .hstat span{background:rgba(255,255,255,.18);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:700;white-space:nowrap}
 .hero b span{font-size:18px;font-weight:700;margin-left:4px}
 .face{width:76px;height:76px;border-radius:28px 34px 30px 36px;background:var(--y);display:flex;align-items:center;justify-content:center;gap:11px;transform:rotate(-8deg);flex:none}
 .face i{width:9px;height:12px;border-radius:6px;background:var(--ink)}
@@ -192,7 +193,7 @@ body:not(.ready) .needs{display:none}
   <!-- 답글함 -->
   <section class="view on" id="v-home">
     <div class="hero">
-      <div><small>답글 기다리는 댓글</small><b><em id="pendCount" style="font-style:normal">0</em><span>개</span></b></div>
+      <div><small>답글 기다리는 댓글</small><b><em id="pendCount" style="font-style:normal">0</em><span>개</span></b><div class="hstat" id="heroStat"></div></div>
       <div class="face" aria-hidden="true"><i></i><i></i></div>
     </div>
     <div class="pair">
@@ -584,6 +585,10 @@ function renderList() {
   list.sort((a, b) => $('sort').value === 'new' ? b.timestamp.localeCompare(a.timestamp) : a.timestamp.localeCompare(b.timestamp));
   if (inboxMode === 'all') list = list.slice(0, 200);
   $('pendCount').textContent = pend.length; $('segWaitN').textContent = pend.length;
+  try { // 내 계정 오늘 숫자 (통계와 같은 계산)
+    const t = dayStats([dayStart(Date.now())], state.media.map(m => m.id))[0], sg = v => v == null ? '-' : (v > 0 ? '+' : '') + num(v);
+    $('heroStat').innerHTML = `<span>오늘 ♥ ${sg(t.like)}</span><span>팔로워 ${lastFollowers != null ? num(lastFollowers) : '-'}${t.fol != null ? ` (${sg(t.fol)})` : ''}</span>`;
+  } catch (e) { $('heroStat').innerHTML = ''; }
   $('list').innerHTML = list.map(c => {
     const wait = pendSet.has(c);
     const reps = (c.replies || []).slice().sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -592,7 +597,7 @@ function renderList() {
       <div class="txt2" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">${esc(c.text)}</div>
       ${reps.map(r => `<div class="rp ${isMine(r.username) ? 'me' : ''}"><b>@${esc(r.username)}</b> ${esc(r.text || '')}</div>`).join('')}`;
     if (!wait) return `<article class="cmt" data-id="${esc(c.id)}">${head}
-      <div class="acts">${heartBadge(c)}<a class="chip ghost small" href="https://www.instagram.com/${encodeURIComponent(c.username)}/" target="_blank" rel="noopener">👤 프로필</a><button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
+      <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <p class="msg" data-role="msg"></p></article>`;
     if (!c._sug) c._sug = suggest(c);
     if (!c._sug3) { const em = (c.text || '').match(/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu); const mine = em ? em[0] : ''; /* 댓글 이모지 중 첫 번째 하나만 */ c._sug3 = (mine ? [mine, ...c._sug.list.filter(t => t !== mine)] : c._sug.list).slice(0, 3); }
@@ -602,7 +607,7 @@ function renderList() {
       <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot sm" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}<button type="button" class="chip sm" data-act="more">더보기</button></div>
       <div class="chips hide" data-role="more">${quick.map(t => `<button type="button" class="chip sm" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost small" data-act="reroll">↻ 다른 추천</button><button type="button" class="chip ghost small" data-act="tpl">✎ 문구 편집</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <div class="rbox"><textarea placeholder="답글 쓰기…" aria-label="답글">${esc(drafts[c.id] || '')}</textarea><button type="button" data-act="send">전송</button></div>
-      <div class="acts">${heartBadge(c)}<a class="chip ghost small" href="https://www.instagram.com/${encodeURIComponent(c.username)}/" target="_blank" rel="noopener" data-tip="인스타에서 이 사람 프로필을 열어. 팔로우는 거기서 눌러줘">👤 프로필·팔로우</a><button type="button" class="chip ghost small" data-act="skip">생략</button></div>
+      <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="skip">생략</button></div>
       <p class="msg" data-role="msg"></p></article>`;
   }).join('') || `<div class="empty"><div class="blob-big"></div><p>${inboxMode === 'wait' ? '답 안 단 댓글이 없어. 다 했다!' : '댓글이 없어'}</p></div>`;
 }
@@ -874,7 +879,7 @@ async function checkNewComments() {
   } catch (e) {}
 }
 function showFol(n) {
-  lastFollowers = n; snapshot();
+  lastFollowers = n; snapshot(); try { renderList(); } catch (e) {}
     $('folNow').textContent = num(n);
   const nx = nextSpecial(n);
   $('folNext').textContent = nx ? num(nx) : '-';
