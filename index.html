@@ -99,6 +99,7 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 /* 답글함 카드 (영상 댓글 창 스타일) */
 .cmt.wait{box-shadow:inset 4px 0 0 var(--y)}
 .cmt .vt2{font-size:12px;color:var(--mute);font-weight:600;margin-bottom:-6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmt a.uname{color:inherit;text-decoration:none}.cmt a.uname b{text-decoration:underline;text-decoration-color:var(--pl);text-decoration-thickness:3px;text-underline-offset:3px}
 .cmt .wtag{margin-left:6px;background:#FFF3BF;color:#8A6A00;font-size:11px;font-weight:700;border-radius:999px;padding:2px 7px}
 .cmt .txt2{font-size:16px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap;cursor:pointer}
 .cmt .rp{border-left:2px solid var(--line);margin:0 0 0 4px;padding:2px 0 2px 10px;font-size:13px;overflow-wrap:anywhere}
@@ -582,13 +583,15 @@ function renderList() {
     const wait = pendSet.has(c);
     const reps = (c.replies || []).slice().sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
     const head = `<div class="vt2">🎬 ${esc(titleOf(mediaById(c.mediaId), 30))}</div>
-      <div class="cmt-top"><b>@${esc(c.username)}</b><span>${fmtDate(c.timestamp)}${wait ? '<span class="wtag">답글 대기</span>' : ''}</span></div>
+      <div class="cmt-top">${cmtUrl(c) ? `<a class="uname" href="${esc(cmtUrl(c))}" target="_blank" rel="noopener"><b>@${esc(c.username)}</b></a>` : `<b>@${esc(c.username)}</b>`}<span>${fmtDate(c.timestamp)}${wait ? '<span class="wtag">답글 대기</span>' : ''}</span></div>
       <div class="txt2" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">${esc(c.text)}</div>
       ${reps.map(r => `<div class="rp ${isMine(r.username) ? 'me' : ''}"><b>@${esc(r.username)}</b> ${esc(r.text || '')}</div>`).join('')}`;
     if (!wait) return `<article class="cmt" data-id="${esc(c.id)}">${head}
       <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <p class="msg" data-role="msg"></p></article>`;
     if (!c._sug) c._sug = suggest(c);
+    if (!c._sug3) { const em = (c.text || '').match(/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu); const mine = em ? em.join('') : ''; c._sug3 = (mine ? [mine, ...c._sug.list.filter(t => t !== mine)] : c._sug.list).slice(0, 3); }
+    c._sug.list = c._sug3;
     const sug = c._sug.list, quick = tpls().filter(t => !sug.includes(t));
     return `<article class="cmt wait" data-id="${esc(c.id)}">${head}
       <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot sm" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}<button type="button" class="chip sm" data-act="more">더보기</button></div>
@@ -615,7 +618,7 @@ $('list').addEventListener('click', async e => {
     box.querySelector('.acts').insertAdjacentHTML('beforebegin', `<div class="rbox"><textarea aria-label="답글">@${esc(c.username)} </textarea><button type="button" data-act="send">전송</button></div>`);
     const t = box.querySelector('textarea'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); return;
   }
-  if (b.dataset.act === 'reroll') { c._sug = suggest(c); renderList(); return; }
+  if (b.dataset.act === 'reroll') { c._sug = suggest(c); delete c._sug3; renderList(); return; }
   if (b.dataset.act === 'sug') {
     ta.value = `@${c.username} ${c._sug.list[+b.dataset.i]}`; ta.focus(); return;
   }
