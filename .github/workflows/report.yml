@@ -38,7 +38,7 @@ jobs:
           if [ -z "$MODE" ]; then
             if [ "${{ github.event.schedule }}" = "7 2 * * *" ]; then MODE=report; else MODE=snap; fi
           fi
-          node .github/report.mjs "$MODE" snaps.json
+          node report.mjs "$MODE" snaps.json
       - name: 기록 저장 (stats 브랜치)
         if: always()
         run: |
