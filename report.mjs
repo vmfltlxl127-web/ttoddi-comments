@@ -108,34 +108,24 @@ function dayStats(days, ids) {
   });
 }
 
-const today = dayStart(now), yest = today - 864e5;
-const [y, t] = dayStats([yest, today], media.map(m => m.id));
-const latest = media[0];
-const [ly] = latest ? dayStats([yest], [latest.id]) : [{}];
-const per = media.map(m => ({ m, r: dayStats([yest], [m.id])[0] })).filter(x => (x.r.like ?? 0) > 0 || x.r.cmt > 0)
-  .sort((a, b) => ((b.r.like ?? 0) + b.r.cmt * 5) - ((a.r.like ?? 0) + a.r.cmt * 5)).slice(0, 3);
-const isTag = c => { const s = (c.text || '').trim(); return /^@[\w.]+/.test(s) && !s.toLowerCase().startsWith('@' + myName); };
-const pendingN = comments.filter(c => !isMine(c.username) && !c.replies.some(r => isMine(r.username)) && !isTag(c)).length;
+let TITLES = {};
+try { TITLES = JSON.parse(readFileSync(new URL('./titles.json', import.meta.url), 'utf8')); } catch (e) {}
+const titleOf = (m, n = 24) => short(TITLES[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim(), n);
+const md = t => { const x = kst(t); return `${x.getUTCMonth() + 1}/${x.getUTCDate()}`; };
 
-const f = v => v == null ? '기록 없음' : (v > 0 ? '+' : '') + num(v);
-const fol = me.followers_count, nx = fol != null ? nextSpecial(fol) : null;
-const d = kst(now);
+const today = dayStart(now), yest = today - 864e5;
+const [y] = dayStats([yest], media.map(m => m.id));
+// 최신 영상 = 가장 최근에 올린 날의 영상 전부
+const lastDay = media.length ? dayStart(new Date(media[0].timestamp).getTime()) : null;
+const latest = media.filter(m => dayStart(new Date(m.timestamp).getTime()) === lastDay);
+const g = v => v == null ? '-' : (v > 0 ? '+' : '') + num(v);
+const yd = kst(yest);
 const lines = [
-  `📊 Keysbrown 리포트 ${d.getUTCMonth() + 1}/${d.getUTCDate()} (${DOW[d.getUTCDay()]})`,
+  `📊 어제 성과 리포트 ${yd.getUTCMonth() + 1}/${yd.getUTCDate()} (${DOW[yd.getUTCDay()]})`,
+  `팔로워 ${g(y.fol)} · 좋아요 ${g(y.like)} · 댓글 ${g(y.cmt)}`,
   '',
-  `👥 팔로워 ${fol != null ? num(fol) : '-'}명 · 어제 ${f(y.fol)}${nx ? ` · ${num(nx)}까지 ${num(nx - fol)}명` : ''}`,
-  `📅 어제 하루 (릴스 ${media.length}개)`,
-  `   ♥ ${f(y.like)}   💬 ${f(y.cmt)}`,
-  `☀️ 오늘 지금까지  ♥ ${f(t.like)}   💬 ${f(t.cmt)}`,
-  '',
-  latest ? `🆕 최신 영상 · ${short(latest.caption, 22)}` : '',
-  latest ? `   어제 ♥ ${f(ly.like)} 💬 ${f(ly.cmt)} · 누적 ♥ ${num(latest.like_count)} 💬 ${num(latest.comments_count)}` : '',
-  '',
-  per.length ? '🏆 어제 많이 오른 영상' : '',
-  ...per.map((x, i) => `${i + 1}. ${short(x.m.caption, 20)} ♥ ${f(x.r.like)} 💬 ${f(x.r.cmt)}`),
-  '',
-  `📮 답 안 단 댓글 ${num(pendingN)}개`
-].filter((l, i, a) => l !== '' || (i > 0 && a[i - 1] !== ''));
+  ...latest.map(m => { const r = dayStats([yest], [m.id])[0]; return `🆕 ${lastDay === yest ? '' : `(${md(lastDay)}) `}${titleOf(m)} ❤️${g(r.like)} 💬${g(r.cmt)}`; })
+];
 const text = lines.join('\n').trim();
 console.log(text);
 

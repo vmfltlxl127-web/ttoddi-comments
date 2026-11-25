@@ -506,12 +506,18 @@ const mediaById = id => state.media.find(m => m.id === id);
 const fmtDate = s => { const d = new Date(s); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const short = (s, n = 40) => { s = (s || '(캡션 없음)').replace(/\s+/g, ' '); return s.length > n ? s.slice(0, n) + '…' : s; };
 const num = n => (n ?? 0).toLocaleString('ko-KR');
+// 릴스 제목: 표지 글자(titles.json) 우선, 없으면 캡션 첫 줄
+let TITLES = {};
+fetch('./titles.json?t=' + Math.floor(Date.now() / 300e3)).then(r => r.ok ? r.json() : {}).then(d => { TITLES = d || {}; if (state.me) { render(); renderStats(); } }).catch(() => {});
+const titleOf = (m, n = 24) => short(m ? (TITLES[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim()) : '', n);
+// 최신 영상 = 가장 최근에 올린 날의 영상 전부
+const latestGroup = media => { if (!media.length) return []; const d = dayStart(media[0].timestamp); return media.filter(m => dayStart(m.timestamp) === d); };
 
 function render() {
   document.body.classList.add('ready');
   const { media } = state;
   const cur = $('filterVid').value;
-  $('filterVid').innerHTML = '<option value="">전체 영상</option>' + media.map(m => `<option value="${esc(m.id)}">${esc(short(m.caption, 30))}</option>`).join('');
+  $('filterVid').innerHTML = '<option value="">전체 영상</option>' + media.map(m => `<option value="${esc(m.id)}">${esc(titleOf(m, 30))}</option>`).join('');
   $('filterVid').value = media.some(m => m.id === cur) ? cur : '';
   renderList();
   renderStats();
@@ -557,7 +563,7 @@ function renderList() {
     const draft = drafts[c.id] || '';
     return `<article class="cmt" data-id="${esc(c.id)}">
       <div class="cmt-top"><b>@${esc(c.username)}</b><span>${liked.has(c.id) ? '<span class="hb on" style="margin:0 6px 0 0;padding:2px 8px">' + HEART + '</span>' : ''}${fmtDate(c.timestamp)}</span></div>
-      <div class="cap">${esc(short(mediaById(c.mediaId)?.caption, 28))}</div>
+      <div class="cap">${esc(titleOf(mediaById(c.mediaId), 28))}</div>
       ${url ? `<a class="txt" href="${esc(url)}" target="_blank" rel="noopener" data-tip="누르면 이 댓글이 달린 릴스로 가">${esc(c.text)}</a>` : `<div class="txt">${esc(c.text)}</div>`}
       <div class="sug-head"><span>추천 답글</span><button type="button" class="mini" data-act="reroll" data-tip="다른 추천 답글로 바꿔줘" aria-label="다른 추천">↻</button></div>
       <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}</div>
@@ -636,7 +642,7 @@ $('likeAll').addEventListener('click', () => {
   likeCand = state.comments.filter(c => (!f || c.mediaId === f) && !isMine(c.username) && !liked.has(c.id) && new Date(c.timestamp).getTime() >= likeSince)
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   if (!likeCand.length) { $('likeConfirm').classList.add('hide'); flash('하트 누를 댓글이 없어. 이미 다 눌렀어!'); return; }
-  $('likeListBox').innerHTML = likeCand.map(c => `<label><input type="checkbox" checked data-id="${esc(c.id)}"><span><b>@${esc(c.username)}</b> ${esc(short(c.text, 60))}<small>${fmtDate(c.timestamp)} · ${esc(short(mediaById(c.mediaId)?.caption, 22))}</small></span></label>`).join('');
+  $('likeListBox').innerHTML = likeCand.map(c => `<label><input type="checkbox" checked data-id="${esc(c.id)}"><span><b>@${esc(c.username)}</b> ${esc(short(c.text, 60))}<small>${fmtDate(c.timestamp)} · ${esc(titleOf(mediaById(c.mediaId), 22))}</small></span></label>`).join('');
   updLikeQ();
   $('likeConfirm').classList.remove('hide');
 });
@@ -789,31 +795,25 @@ $('folNoti').addEventListener('click', async () => {
 function buildReport() {
   const now = new Date();
   const media = [...state.media].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  const today = dayStart(now), yest = today - 864e5;
-  const all = media.map(m => m.id);
-  const [y, t] = dayStats([yest, today], all);
-  const latest = media[0];
-  const [ly, lt] = latest ? dayStats([yest, today], [latest.id]) : [{}, {}];
+  const today = dayStart(now), yest = today - 864e5, yd = new Date(yest);
+  const [y] = dayStats([yest], media.map(m => m.id));
+  const latest = latestGroup(media);
+  const lastDay = latest.length ? dayStart(latest[0].timestamp) : null;
   const per = media.map(m => ({ m, r: dayStats([yest], [m.id])[0] })).filter(x => (x.r.like ?? 0) > 0 || x.r.cmt > 0)
     .sort((a, b) => ((b.r.like ?? 0) + b.r.cmt * 5) - ((a.r.like ?? 0) + a.r.cmt * 5)).slice(0, 3);
   const f = v => v == null ? '기록 없음' : (v > 0 ? '+' : '') + num(v);
-  const fol = lastFollowers, nx = fol != null ? nextSpecial(fol) : null;
+  const ld = lastDay ? new Date(lastDay) : null;
   const lines = [
-    `📊 Keysbrown 리포트 ${now.getMonth() + 1}/${now.getDate()} (${DOW[now.getDay()]})`,
+    '📊 어제 성과 리포트',
+    `${yd.getMonth() + 1}/${yd.getDate()} (${DOW[yd.getDay()]})`,
     '',
-    `👥 팔로워 ${fol != null ? num(fol) : '-'}명 · 어제 ${f(y.fol)}${nx ? ` · ${num(nx)}까지 ${num(nx - fol)}명` : ''}`,
-    `📅 어제 하루 (릴스 ${media.length}개)`,
-    `   ♥ ${f(y.like)}   💬 ${f(y.cmt)}`,
-    `☀️ 오늘 지금까지  ♥ ${f(t.like)}   💬 ${f(t.cmt)}`,
+    `👥 팔로워 ${lastFollowers != null ? num(lastFollowers) + '명' : '-'} (${f(y.fol)})`,
+    `❤️ 좋아요 ${f(y.like)}`,
+    `💬 댓글 ${f(y.cmt)}`,
     '',
-    latest ? `🆕 최신 영상 · ${short(latest.caption, 22)}` : '',
-    latest ? `   어제 ♥ ${f(ly.like)} 💬 ${f(ly.cmt)} · 누적 ♥ ${num(latest.like_count)} 💬 ${num(latest.comments_count)}` : '',
-    '',
-    per.length ? '🏆 어제 많이 오른 영상' : '',
-    ...per.map((x, i) => `${i + 1}. ${short(x.m.caption, 20)} ♥ ${f(x.r.like)} 💬 ${f(x.r.cmt)}`),
-    '',
-    `📮 답 안 단 댓글 ${num(pending().length)}개`
-  ].filter((l, i, a) => l !== '' || (i > 0 && a[i - 1] !== ''));
+    ...(latest.length ? [`🆕 최신 영상 (${ld.getMonth() + 1}/${ld.getDate()})`, ...latest.flatMap(m => { const r = dayStats([yest], [m.id])[0]; return [`· ${titleOf(m, 26)}`, `  ❤️ ${f(r.like)}  💬 ${f(r.cmt)}`]; }), ''] : []),
+    ...(per.length ? ['🏆 어제 잘된 영상', ...per.map((x, i) => `${i + 1}. ${titleOf(x.m, 26)}`)] : [])
+  ];
   return { text: lines.join('\n').trim(), snap: { at: `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}` } };
 }
 async function makeReport(send) {
@@ -832,7 +832,7 @@ $('repNow').addEventListener('click', () => makeReport(false));
 $('repSend').addEventListener('click', () => makeReport(true));
 
 $('copyAsk').addEventListener('click', async () => {
-  const list = pending().slice(0, 40).map(c => `- @${c.username} (${short(mediaById(c.mediaId)?.caption, 20)}): ${c.text}`).join('\n');
+  const list = pending().slice(0, 40).map(c => `- @${c.username} (${titleOf(mediaById(c.mediaId), 20)}): ${c.text}`).join('\n');
   if (!list) { flash('답 안 단 댓글이 없어'); return; }
   const text = `내 인스타 댓글에 달 답글을 내 말투로 하나씩 써줘. 한 줄에 하나씩, 답글 앞에 @아이디 붙여서, 설명 없이 답글만.\n\n${STYLE_GUIDE}\n\n[답 안 단 댓글]\n${list}`;
   try { await navigator.clipboard.writeText(text); } catch (e) {}
@@ -860,7 +860,7 @@ let thMedia = null;
 function openThread(mediaId) {
   const m = mediaById(mediaId); if (!m) return;
   thMedia = mediaId;
-  $('thTitle').textContent = short(m.caption, 34);
+  $('thTitle').textContent = titleOf(m, 34);
   $('thOpen').href = m.permalink || '#';
   renderThread();
   $('thread').classList.remove('hide'); document.body.style.overflow = 'hidden';
@@ -1055,11 +1055,11 @@ function renderStats() {
   const media = [...state.media].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   const sel = $('stVid');
   const cur = sel.value || store.get('stVid', '');
-  sel.innerHTML = media.map(m => `<option value="${esc(m.id)}">${esc(fmtDate(m.timestamp).split(' ')[0])} · ${esc(short(m.caption, 30))}</option>`).join('');
+  sel.innerHTML = media.map(m => `<option value="${esc(m.id)}">${esc(fmtDate(m.timestamp).split(' ')[0])} · ${esc(titleOf(m, 30))}</option>`).join('');
   sel.value = media.some(m => m.id === cur) ? cur : (media[0]?.id || '');
   sel.classList.toggle('hide', stScope !== 'pick');
   const latest = stScope === 'pick' ? (media.find(m => m.id === sel.value) || media[0]) : media[0];
-  const ids = stScope !== 'all' && latest ? [latest.id] : media.map(m => m.id);
+  const ids = stScope === 'pick' && latest ? [latest.id] : stScope === 'latest' ? latestGroup(media).map(m => m.id) : media.map(m => m.id);
   const today = dayStart(Date.now());
   let n = 7;
   if (stPeriod === 'up' && latest) n = Math.min(14, Math.max(1, Math.round((today - dayStart(latest.timestamp)) / 864e5) + 1));
@@ -1070,7 +1070,7 @@ function renderStats() {
   document.querySelectorAll('[data-scope]').forEach(b => b.classList.toggle('on', b.dataset.scope === stScope));
   document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('on', b.dataset.period === stPeriod));
   document.querySelectorAll('[data-metric]').forEach(b => b.classList.toggle('on', b.dataset.metric === stMetric));
-  $('stScopeName').textContent = stScope === 'all' ? `릴스 ${media.length}개 전체` : stScope === 'latest' && latest ? short(latest.caption, 26) : '';
+  $('stScopeName').textContent = stScope === 'all' ? `릴스 ${media.length}개 전체` : stScope === 'latest' && latest ? (g => g.length > 1 ? `${new Date(latest.timestamp).getMonth() + 1}/${new Date(latest.timestamp).getDate()} 영상 ${g.length}개 · ${g.map(m => titleOf(m, 14)).join(' / ')}` : titleOf(latest, 26))(latestGroup(media)) : '';
   $('kLike').textContent = fmt(t.like); $('kCmt').textContent = fmt(t.cmt); $('kFol').textContent = fmt(t.fol);
   ['kLike', 'kFol'].forEach(k => $(k).classList.toggle('rec', $(k).textContent === '기록 중'));
   const vals = rows.map(r => r[stMetric] ?? 0), max = Math.max(1, ...vals);
@@ -1082,7 +1082,7 @@ function renderStats() {
     $('stList').innerHTML = `<div class="li head"><span>날짜</span><span>♥</span><span>댓글</span><span>팔로워</span></div>` + [...rows].reverse().map(r => `<div class="li"><span>${new Date(r.d0).getMonth() + 1}/${new Date(r.d0).getDate()} ${DOW[new Date(r.d0).getDay()]}</span><span>${fmt(r.like)}</span><span>${fmt(r.cmt)}</span><span>${fmt(r.fol)}</span></div>`).join('');
   } else {
     const per = media.map(m => { const r = dayStats([today], [m.id])[0]; return { m, r }; }).sort((a, b) => ((b.r.like ?? 0) + b.r.cmt * 5) - ((a.r.like ?? 0) + a.r.cmt * 5));
-    $('stList').innerHTML = `<div class="li head"><span>오늘 영상별</span><span>♥</span><span>댓글</span></div>` + per.map(({ m, r }) => `<a class="li vid" href="${esc(m.permalink || '#')}" target="_blank" rel="noopener"><span class="vt">${m.thumbnail_url ? `<img src="${esc(m.thumbnail_url)}" alt="" loading="lazy">` : '<i></i>'}<em>${esc(short(m.caption, 22))}</em></span><span>${fmt(r.like)}</span><span>${fmt(r.cmt)}</span></a>`).join('');
+    $('stList').innerHTML = `<div class="li head"><span>오늘 영상별</span><span>♥</span><span>댓글</span></div>` + per.map(({ m, r }) => `<a class="li vid" href="${esc(m.permalink || '#')}" target="_blank" rel="noopener"><span class="vt">${m.thumbnail_url ? `<img src="${esc(m.thumbnail_url)}" alt="" loading="lazy">` : '<i></i>'}<em>${esc(titleOf(m, 22))}</em></span><span>${fmt(r.like)}</span><span>${fmt(r.cmt)}</span></a>`).join('');
   }
 }
 $('stVid').addEventListener('change', () => { store.set('stVid', $('stVid').value); renderStats(); });
