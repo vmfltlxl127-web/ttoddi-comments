@@ -67,6 +67,11 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 .chip.ghost{border-style:dashed;color:var(--sub)}
 .done{background:var(--pl);color:var(--pd);border-radius:14px;padding:12px;font-size:14px;line-height:1.5}
 .done small{color:var(--p)}
+.sent{display:flex;flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.sent:last-child{border-bottom:0}
+.sent .s-top{display:flex;justify-content:space-between;font-size:12px;color:var(--sub)}
+.sent .s-orig{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sent .s-me{font-size:15px;font-weight:600;overflow-wrap:anywhere}
 .empty{text-align:center;padding:40px 0;color:var(--sub)}
 .blob-big{width:84px;height:84px;margin:0 auto 12px;border-radius:30px 38px 32px 40px;background:var(--y);transform:rotate(8deg);position:relative}
 .blob-big::before,.blob-big::after{content:"";position:absolute;top:34px;width:10px;height:13px;border-radius:6px;background:var(--ink)}
@@ -168,6 +173,10 @@ body:not(.ready) .needs{display:none}
         <textarea id="fillText" placeholder="클로드가 써준 답글을 통째로 붙여넣어줘" aria-label="클로드 답"></textarea>
         <button class="btn primary" id="fillGo" data-tip="@아이디를 보고 댓글마다 답글 칸을 자동으로 채워">답글 채우기</button>
       </div>
+    </details>
+    <details class="fill" id="sentBox">
+      <summary>최근 보낸 답글 <span>▾</span></summary>
+      <div class="fill-in" id="sentList"></div>
     </details>
     <div class="sheet hide" id="tplSheet">
       <label for="tpl">빠른 답글 문구 · 한 줄에 하나</label>
@@ -370,13 +379,13 @@ async function allPages(first, cap = 500) {
 }
 
 // ---------- 캐시 (열자마자 바로 보이게) ----------
-const CACHE_KEY = 'cache_v1';
+const CACHE_KEY = 'cache_v2';
 function saveCache() {
   if (state.demo || !state.me) return;
   const slim = {
     me: state.me, at: Date.now(),
     media: state.media.map(({ id, caption, media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url }) => ({ id, caption: (caption || '').slice(0, 120), media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url })),
-    comments: state.comments.map(({ id, text, username, timestamp, like_count, mediaId, replies }) => ({ id, text, username, timestamp, like_count, mediaId, replies: (replies || []).map(r => ({ username: r.username })) }))
+    comments: state.comments.map(({ id, text, username, timestamp, like_count, mediaId, replies }) => ({ id, text, username, timestamp, like_count, mediaId, replies: (replies || []).map(r => isMine(r.username) ? { username: r.username, text: r.text, timestamp: r.timestamp } : { username: r.username }) }))
   };
   try { localStorage.setItem('ttd_' + CACHE_KEY, JSON.stringify(slim)); } catch (e) {}
 }
@@ -480,8 +489,20 @@ function render() {
   $('filterVid').value = media.some(m => m.id === cur) ? cur : '';
   renderList();
   renderStats();
+  renderSent();
 }
 
+function renderSent() {
+  const out = [];
+  for (const c of state.comments) for (const r of c.replies || []) if (isMine(r.username) && r.text) out.push({ c, r });
+  out.sort((a, b) => (b.r.timestamp || '').localeCompare(a.r.timestamp || ''));
+  const top = out.slice(0, 15);
+  $('sentList').innerHTML = top.map(({ c, r }) => {
+    const url = cmtUrl(c);
+    const inner = `<div class="s-top"><b style="color:var(--ink)">@${esc(c.username)}</b><span>${r.timestamp ? fmtDate(r.timestamp) : ''}</span></div><div class="s-orig">${esc(c.text)}</div><div class="s-me">↳ ${esc(r.text)}</div>`;
+    return url ? `<a class="sent" href="${esc(url)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="sent">${inner}</div>`;
+  }).join('') || '<p class="msg">아직 보낸 답글이 없어</p>';
+}
 function cmtUrl(c) {
   const m = mediaById(c.mediaId);
   if (!m?.permalink || m.permalink === '#') return '';
@@ -538,11 +559,11 @@ $('list').addEventListener('click', async e => {
       if (!state.demo) await api(`${id}/replies`, { message: text }, 'POST');
       let likedNote = '';
       if ($('autoLike').checked) { const ok = await likeComment(id); likedNote = ok ? ' + ♥' : ` (하트 실패: ${/permission/i.test(likeErr) ? '토큰에 하트 권한이 없어. 🔑 연결 설정에서 새 토큰으로 바꿔줘' : likeErr})`; }
-      c.replies.push({ username: state.me.username, text });
+      c.replies.push({ username: state.me.username, text, timestamp: new Date().toISOString() });
       if (!state.demo) { replied.add(id); store.set('replied', [...replied].slice(-3000)); saveCache(); }
       delete drafts[id];
       box.innerHTML = `<div class="cmt-top"><b>@${esc(c.username)}</b></div><div class="txt">${esc(c.text)}</div><div class="done">↳ ${esc(text)}<br><small>${state.demo ? '(체험) ' : ''}답글 완료${likedNote}</small></div>`;
-      setTimeout(render, 1500);
+      saveCache(); setTimeout(render, 1500);
     } catch (err) {
       b.disabled = false; msg.innerHTML = `<span class="err">${esc(err.message)}</span>`;
     }
