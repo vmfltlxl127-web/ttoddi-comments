@@ -107,6 +107,9 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 .cmt .rbox{display:flex;gap:6px}.cmt .rbox textarea{flex:1;min-height:44px;height:44px;padding:10px 12px;font-size:15px;background:var(--bg)}
 .cmt .rbox button{flex:none;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:700;padding:0 16px;cursor:pointer}
 .cmt .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.cmt .acts .hb{margin-top:0}
+.cmt a.chip{text-decoration:none;display:inline-flex;align-items:center}
+.bulkbar{position:sticky;bottom:84px;z-index:5;margin:10px 0}
+.bulkbar button{width:100%;height:52px;border:0;border-radius:16px;background:var(--p);color:#fff;font:inherit;font-size:16px;font-weight:800;box-shadow:0 6px 18px rgba(108,60,224,.35);cursor:pointer}
 .chip.sm{min-height:32px;padding:5px 11px;font-size:12.5px}
 .empty{text-align:center;padding:40px 0;color:var(--sub)}
 .blob-big{width:84px;height:84px;margin:0 auto 12px;border-radius:30px 38px 32px 40px;background:var(--y);transform:rotate(8deg);position:relative}
@@ -220,6 +223,7 @@ body:not(.ready) .needs{display:none}
       <textarea id="tpl" style="min-height:130px"></textarea>
     </div>
     <div class="seg" id="inboxSeg" role="tablist"><button type="button" data-mode="wait" class="on">답 대기 <span id="segWaitN"></span></button><button type="button" data-mode="all">전체 댓글</button></div>
+    <div class="bulkbar hide" id="bulkBar"><button type="button" id="bulkSend">쓴 답글 0개 한번에 전송</button></div>
     <div id="list"></div>
   </section>
 
@@ -519,6 +523,7 @@ let replied = new Set(store.get('replied', []));
 const isTag = c => { const t = (c.text || '').trim(); return /^@[\w.]+/.test(t) && !t.toLowerCase().startsWith('@' + myName()); };
 const pending = () => state.comments.filter(c => !isMine(c.username) && !c.replies.some(r => isMine(r.username)) && !skipped.has(c.id) && !replied.has(c.id) && !($('noTag').checked && isTag(c)));
 const mediaById = id => state.media.find(m => m.id === id);
+const agoC = s => { const m = Math.floor((Date.now() - new Date(s)) / 60000); if (m < 1) return '방금'; if (m < 60) return `${m}분 전`; const h = Math.floor(m / 60); if (h < 24) return `${h}시간 전`; const d = Math.floor(h / 24); return d < 7 ? `${d}일 전` : fmtDate(s); };
 const fmtDate = s => { const d = new Date(s); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 const short = (s, n = 40) => { s = (s || '(캡션 없음)').replace(/\s+/g, ' '); return s.length > n ? s.slice(0, n) + '…' : s; };
 const num = n => (n ?? 0).toLocaleString('ko-KR');
@@ -583,11 +588,11 @@ function renderList() {
     const wait = pendSet.has(c);
     const reps = (c.replies || []).slice().sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
     const head = `<div class="vt2">🎬 ${esc(titleOf(mediaById(c.mediaId), 30))}</div>
-      <div class="cmt-top">${cmtUrl(c) ? `<a class="uname" href="${esc(cmtUrl(c))}" target="_blank" rel="noopener"><b>@${esc(c.username)}</b></a>` : `<b>@${esc(c.username)}</b>`}<span>${fmtDate(c.timestamp)}${wait ? '<span class="wtag">답글 대기</span>' : ''}</span></div>
+      <div class="cmt-top">${cmtUrl(c) ? `<a class="uname" href="${esc(cmtUrl(c))}" target="_blank" rel="noopener"><b>@${esc(c.username)}</b></a>` : `<b>@${esc(c.username)}</b>`}<span title="${fmtDate(c.timestamp)}">${agoC(c.timestamp)}${wait ? '<span class="wtag">답글 대기</span>' : ''}</span></div>
       <div class="txt2" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">${esc(c.text)}</div>
       ${reps.map(r => `<div class="rp ${isMine(r.username) ? 'me' : ''}"><b>@${esc(r.username)}</b> ${esc(r.text || '')}</div>`).join('')}`;
     if (!wait) return `<article class="cmt" data-id="${esc(c.id)}">${head}
-      <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
+      <div class="acts">${heartBadge(c)}<a class="chip ghost small" href="https://www.instagram.com/${encodeURIComponent(c.username)}/" target="_blank" rel="noopener">👤 프로필</a><button type="button" class="chip ghost small" data-act="open">답글</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <p class="msg" data-role="msg"></p></article>`;
     if (!c._sug) c._sug = suggest(c);
     if (!c._sug3) { const em = (c.text || '').match(/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu); const mine = em ? em[0] : ''; /* 댓글 이모지 중 첫 번째 하나만 */ c._sug3 = (mine ? [mine, ...c._sug.list.filter(t => t !== mine)] : c._sug.list).slice(0, 3); }
@@ -597,7 +602,7 @@ function renderList() {
       <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot sm" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}<button type="button" class="chip sm" data-act="more">더보기</button></div>
       <div class="chips hide" data-role="more">${quick.map(t => `<button type="button" class="chip sm" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost small" data-act="reroll">↻ 다른 추천</button><button type="button" class="chip ghost small" data-act="tpl">✎ 문구 편집</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <div class="rbox"><textarea placeholder="답글 쓰기…" aria-label="답글">${esc(drafts[c.id] || '')}</textarea><button type="button" data-act="send">전송</button></div>
-      <div class="acts">${heartBadge(c)}<button type="button" class="chip ghost small" data-act="skip">생략</button></div>
+      <div class="acts">${heartBadge(c)}<a class="chip ghost small" href="https://www.instagram.com/${encodeURIComponent(c.username)}/" target="_blank" rel="noopener" data-tip="인스타에서 이 사람 프로필을 열어. 팔로우는 거기서 눌러줘">👤 프로필·팔로우</a><button type="button" class="chip ghost small" data-act="skip">생략</button></div>
       <p class="msg" data-role="msg"></p></article>`;
   }).join('') || `<div class="empty"><div class="blob-big"></div><p>${inboxMode === 'wait' ? '답 안 단 댓글이 없어. 다 했다!' : '댓글이 없어'}</p></div>`;
 }
@@ -625,7 +630,7 @@ $('list').addEventListener('click', async e => {
     // 내가 쓴 글이 있으면 뒤에 붙이고, 비었거나 추천만 들어있으면 바꾸기
     if (!cur || cur === base || (cur === box.dataset.last && box.dataset.app !== '1')) { ta.value = `${base} ${t}`; box.dataset.app = '0'; }
     else { ta.value = ta.value.replace(/\s+$/, '') + (/^\p{Extended_Pictographic}/u.test(t) ? '' : ' ') + t; box.dataset.app = '1'; }
-    box.dataset.last = ta.value.trim(); drafts[id] = ta.value;
+    box.dataset.last = ta.value.trim(); drafts[id] = ta.value; updBulk();
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); return;
   }
   if (b.dataset.act === 'tpl') { $('tplSheet').classList.toggle('hide'); if (!$('tplSheet').classList.contains('hide')) $('tpl').focus(); return; }
@@ -634,24 +639,59 @@ $('list').addEventListener('click', async e => {
   }
   if (b.dataset.act === 'send') {
     const text = ta.value.trim();
-    if (!text) { msg.textContent = '답글 내용을 써줘.'; return; }
-    b.disabled = true; msg.textContent = '보내는 중…';
-    try {
-      if (!state.demo) await api(`${id}/replies`, { message: text }, 'POST');
-      let likedNote = '';
-      if ($('autoLike').checked) { const ok = await likeComment(id); likedNote = ok ? ' + ♥' : ` (하트 실패: ${/permission/i.test(likeErr) ? '토큰에 하트 권한이 없어. 🔑 연결 설정에서 새 토큰으로 바꿔줘' : likeErr})`; }
-      c.replies.push({ username: state.me.username, text, timestamp: new Date().toISOString() });
-      if (!state.demo) { replied.add(id); store.set('replied', [...replied].slice(-3000)); saveCache(); }
-      delete drafts[id];
-      box.classList.remove('wait');
-      box.innerHTML = `<div class="vt2">🎬 ${esc(titleOf(mediaById(c.mediaId), 30))}</div><div class="cmt-top"><b>@${esc(c.username)}</b></div><div class="txt2">${esc(c.text)}</div><div class="done">↳ ${esc(text)}<br><small>${state.demo ? '(체험) ' : ''}답글 완료${likedNote}</small></div>`;
-      saveCache(); setTimeout(render, 1500);
-    } catch (err) {
-      b.disabled = false; msg.innerHTML = `<span class="err">${esc(err.message)}</span>`;
-    }
+    if (!text || text === `@${c.username}`) { msg.textContent = '답글 내용을 써줘.'; return; }
+    b.disabled = true; await sendReply(box, c, text); b.disabled = false; updBulk();
   }
 });
 
+// 답글 보내기 (카드 하나). 거절되면 맨 앞 @아이디를 빼고 한 번 더 시도
+async function sendReply(box, c, text) {
+  const msg = box.querySelector('[data-role=msg]');
+  msg.textContent = '보내는 중…';
+  let sent = text;
+  try {
+    if (!state.demo) {
+      try { await api(`${c.id}/replies`, { message: text }, 'POST'); }
+      catch (err) {
+        const pre = '@' + c.username;
+        const bare = text.startsWith(pre) ? text.slice(pre.length).trim() : '';
+        if (!bare) throw err;
+        await api(`${c.id}/replies`, { message: bare }, 'POST'); sent = bare;
+      }
+    }
+    let likedNote = '';
+    if ($('autoLike').checked) { const ok = await likeComment(c.id); likedNote = ok ? ' + ♥' : ` (하트 실패: ${/permission/i.test(likeErr) ? '토큰에 하트 권한이 없어' : likeErr})`; }
+    c.replies.push({ username: state.me.username, text: sent, timestamp: new Date().toISOString() });
+    if (!state.demo) { replied.add(c.id); store.set('replied', [...replied].slice(-3000)); }
+    delete drafts[c.id];
+    box.classList.remove('wait');
+    box.innerHTML = `<div class="vt2">🎬 ${esc(titleOf(mediaById(c.mediaId), 30))}</div><div class="cmt-top"><b>@${esc(c.username)}</b></div><div class="txt2">${esc(c.text)}</div><div class="done">↳ ${esc(sent)}<br><small>${state.demo ? '(체험) ' : ''}답글 완료${likedNote}</small></div>`;
+    saveCache(); return true;
+  } catch (err) {
+    msg.innerHTML = `<span class="err">인스타가 거절했어: ${esc(err.message.split('\n')[0])}</span>`;
+    return false;
+  }
+}
+// 쓴 답글 한번에 전송
+function filledBoxes() {
+  return [...$('list').querySelectorAll('.cmt.wait')].filter(box => {
+    const c = state.comments.find(x => x.id === box.dataset.id); const t = (box.querySelector('textarea')?.value || '').trim();
+    return c && t && t !== `@${c.username}`;
+  });
+}
+function updBulk() { const n = filledBoxes().length; $('bulkBar').classList.toggle('hide', n < 2); $('bulkSend').textContent = `쓴 답글 ${n}개 한번에 전송`; }
+$('bulkSend').addEventListener('click', async () => {
+  const boxes = filledBoxes(); if (!boxes.length) return;
+  const btn = $('bulkSend'); btn.disabled = true; let ok = 0, i = 0;
+  for (const box of boxes) {
+    btn.textContent = `보내는 중… ${++i}/${boxes.length}`;
+    const c = state.comments.find(x => x.id === box.dataset.id);
+    if (await sendReply(box, c, box.querySelector('textarea').value.trim())) ok++;
+    if (i < boxes.length) await new Promise(r => setTimeout(r, state.demo ? 50 : 2500));
+  }
+  btn.disabled = false; flash(`답글 ${ok}개 보냈어${ok < boxes.length ? ` · ${boxes.length - ok}개 실패 (카드에 이유 적어둠)` : ''}`);
+  $('pendCount').textContent = pending().length; $('segWaitN').textContent = pending().length; updBulk();
+});
 // ---------- 댓글 하트 ----------
 let liked = new Set(store.get('liked', []));
 let likeErr = '';
@@ -1011,7 +1051,7 @@ $('sentList').addEventListener('click', async e => {
   const ok = await likeComment(b.dataset.like);
   if (ok) { renderSent(); flash('하트 눌렀어'); } else { b.disabled = false; b.lastChild.textContent = '다시 누르기'; flash('하트 실패: ' + likeErr); }
 });
-$('list').addEventListener('input', e => { const box = e.target.closest('.cmt'); if (box && e.target.tagName === 'TEXTAREA') drafts[box.dataset.id] = e.target.value; });
+$('list').addEventListener('input', e => { const box = e.target.closest('.cmt'); if (box && e.target.tagName === 'TEXTAREA') { drafts[box.dataset.id] = e.target.value; updBulk(); } });
 
 $('fullLoad').addEventListener('click', () => load({ full: true }));
 $('count').value = store.get('count', '0');
