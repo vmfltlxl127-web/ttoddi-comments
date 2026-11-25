@@ -1,0 +1,10 @@
+name: ocr-test
+on: workflow_dispatch
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node ocrtest.mjs
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
