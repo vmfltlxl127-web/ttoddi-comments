@@ -7,7 +7,7 @@ on:
   workflow_dispatch:        # Actions 화면에서 '지금 실행' 버튼
     inputs:
       mode:
-        description: 'report = 리포트 보내기 / snap = 기록만 / titletest = 표지 인식 테스트'
+        description: 'report = 리포트 보내기 / snap = 기록만 / titletest = 표지 인식 테스트 / debugcmt'
         default: report
 
 permissions:
@@ -36,6 +36,7 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WHO: yeye2.28,xhnuxxik
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then

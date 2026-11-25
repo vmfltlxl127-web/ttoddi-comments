@@ -93,6 +93,17 @@ async function autoTitles(list) {
   }
   writeFileSync(AUTO_FILE, JSON.stringify(AUTO, null, 1));
 }
+if (MODE === 'debugcmt') { // 특정 아이디 댓글 원본 확인용
+  const who = (process.env.WHO || '').split(',');
+  for (const m of media.slice(0, 6)) {
+    const first = await api(`${m.id}/comments`, { fields: 'id,text,username,timestamp,parent_id,replies.limit(50){id,text,username,timestamp}', limit: 50 });
+    for (const c of await allPages(first)) {
+      const hit = [c, ...(c.replies?.data || [])].filter(x => who.includes(x.username));
+      if (hit.length) console.log(JSON.stringify({ media: m.id, top: { u: c.username, text: c.text }, hit }, null, 1));
+    }
+  }
+  process.exit(0);
+}
 if (MODE === 'titletest') {
   const sample = media.filter(m => MANUAL[m.id]).slice(0, Number(process.argv[4] || 8));
   for (const m of sample) {
