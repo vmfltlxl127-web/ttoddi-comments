@@ -78,6 +78,20 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 .hb{display:inline-flex;align-items:center;gap:5px;border:1.5px solid #FFC2CB;background:#fff;color:#E5484D;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}
 .hb.on{background:#FFE8EC;border-color:#FFE8EC;cursor:default}
 .sent .s-me{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.thread{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}
+.th-head{display:flex;align-items:center;gap:10px;padding:max(14px,env(safe-area-inset-top)) 16px 12px;background:#fff;border-bottom:1px solid var(--line)}
+.th-head b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.th-head small{font-size:12px;color:var(--sub)}
+.th-body{flex:1;overflow:auto;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
+.tc{background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:8px}
+.tc .t1{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--sub)}.tc .t1 b{color:var(--ink);font-size:14px}
+.tc .t2{font-size:15px;margin:4px 0 6px;overflow-wrap:anywhere;white-space:pre-wrap}
+.tc .rp{border-left:2px solid var(--line);margin:6px 0 0 4px;padding:2px 0 2px 10px;font-size:13px}
+.tc .rp.me{border-color:var(--p)}.tc .rp b{font-size:12px}
+.tc .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tc .rbox{display:flex;gap:6px;margin-top:8px}.tc .rbox textarea{min-height:44px;height:44px;padding:10px 12px;font-size:15px}
+.tc .rbox button{flex:none;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:700;padding:0 14px}
+.tc.wait{box-shadow:inset 3px 0 0 var(--y)}
+.chip.ghost.small{min-height:30px;padding:4px 10px;font-size:12px}
 .empty{text-align:center;padding:40px 0;color:var(--sub)}
 .blob-big{width:84px;height:84px;margin:0 auto 12px;border-radius:30px 38px 32px 40px;background:var(--y);transform:rotate(8deg);position:relative}
 .blob-big::before,.blob-big::after{content:"";position:absolute;top:34px;width:10px;height:13px;border-radius:6px;background:var(--ink)}
@@ -274,6 +288,14 @@ body:not(.ready) .needs{display:none}
   <button class="tab" data-v="stats"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 14c0-5 4-8 9-8h8c6 0 9 4 9 9v9c0 6-4 9-9 9h-8c-6 0-9-4-9-9z" fill="#FFD43B"/><rect x="12" y="22" width="3.5" height="6" rx="1.5" fill="#17151F" opacity=".25"/><rect x="18" y="19" width="3.5" height="9" rx="1.5" fill="#17151F" opacity=".25"/><rect x="24" y="16" width="3.5" height="12" rx="1.5" fill="#17151F" opacity=".25"/><ellipse cx="16" cy="13" rx="1.8" ry="2.4" fill="#17151F"/><ellipse cx="24" cy="13" rx="1.8" ry="2.4" fill="#17151F"/></svg>통계</button>
   <button class="tab" data-v="set"><svg viewBox="0 0 40 40" aria-hidden="true"><g fill="#3CC8B4"><circle cx="20" cy="9" r="6"/><circle cx="29.5" cy="14.5" r="6"/><circle cx="29.5" cy="25.5" r="6"/><circle cx="20" cy="31" r="6"/><circle cx="10.5" cy="25.5" r="6"/><circle cx="10.5" cy="14.5" r="6"/><circle cx="20" cy="20" r="10"/></g><ellipse cx="16.5" cy="19" rx="1.8" ry="2.4" fill="#17151F"/><ellipse cx="23.5" cy="19" rx="1.8" ry="2.4" fill="#17151F"/></svg>설정</button>
 </nav>
+<div id="thread" class="thread hide" role="dialog" aria-modal="true" aria-labelledby="thTitle">
+  <div class="th-head">
+    <button class="mini" id="thClose" aria-label="닫기" style="background:var(--bg);color:var(--ink)">✕</button>
+    <div style="flex:1;min-width:0"><b id="thTitle"></b><small id="thSub"></small></div>
+    <a class="mini" id="thOpen" target="_blank" rel="noopener" aria-label="인스타에서 열기" style="display:flex;align-items:center;justify-content:center;text-decoration:none">↗</a>
+  </div>
+  <div class="th-body" id="thBody"></div>
+</div>
 <div id="tip" role="tooltip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -382,13 +404,13 @@ async function allPages(first, cap = 500) {
 }
 
 // ---------- 캐시 (열자마자 바로 보이게) ----------
-const CACHE_KEY = 'cache_v2';
+const CACHE_KEY = 'cache_v3';
 function saveCache() {
   if (state.demo || !state.me) return;
   const slim = {
     me: state.me, at: Date.now(),
     media: state.media.map(({ id, caption, media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url }) => ({ id, caption: (caption || '').slice(0, 120), media_type, media_product_type, permalink, timestamp, like_count, comments_count, thumbnail_url })),
-    comments: state.comments.map(({ id, text, username, timestamp, like_count, mediaId, replies }) => ({ id, text, username, timestamp, like_count, mediaId, replies: (replies || []).map(r => isMine(r.username) ? { username: r.username, text: r.text, timestamp: r.timestamp } : { username: r.username }) }))
+    comments: state.comments.map(({ id, text, username, timestamp, like_count, mediaId, replies }) => ({ id, text, username, timestamp, like_count, mediaId, replies: (replies || []).map(r => ({ id: r.id, username: r.username, text: r.text, timestamp: r.timestamp })) }))
   };
   try { localStorage.setItem('ttd_' + CACHE_KEY, JSON.stringify(slim)); } catch (e) {}
 }
@@ -508,7 +530,7 @@ function renderSent() {
       : `<button type="button" class="hb" data-like="${esc(c.id)}" data-tip="이 댓글에 하트를 눌러">${HEART}하트 누르기</button>`;
     return `<div class="sent"><div class="s-top"><b style="color:var(--ink)">@${esc(c.username)}</b><span>${r.timestamp ? fmtDate(r.timestamp) : ''}</span></div>
       ${url ? `<a class="s-orig" href="${esc(url)}" target="_blank" rel="noopener">${esc(c.text)}</a>` : `<div class="s-orig">${esc(c.text)}</div>`}
-      <div class="s-me">↳ ${esc(r.text)}</div><div>${heart}</div></div>`;
+      <div class="s-me">↳ ${esc(r.text)}</div><div class="acts" style="display:flex;gap:6px;flex-wrap:wrap">${heart}<button type="button" class="hb" style="color:var(--p);border-color:var(--pl)" data-thread="${esc(c.mediaId)}">💬 영상 댓글</button></div></div>`;
   }).join('') || '<p class="msg">아직 보낸 답글이 없어</p>';
 }
 function cmtUrl(c) {
@@ -534,7 +556,7 @@ function renderList() {
       ${url ? `<a class="txt" href="${esc(url)}" target="_blank" rel="noopener" data-tip="누르면 이 댓글이 달린 릴스로 가">${esc(c.text)}</a>` : `<div class="txt">${esc(c.text)}</div>`}
       <div class="sug-head"><span>추천 답글</span><button type="button" class="mini" data-act="reroll" data-tip="다른 추천 답글로 바꿔줘" aria-label="다른 추천">↻</button></div>
       <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}</div>
-      <div class="chips">${quick.map(t => `<button type="button" class="chip" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost" data-act="tpl" data-tip="자주 쓰는 답글 문구를 고쳐">✎ 문구 편집</button></div>
+      <div class="chips">${quick.map(t => `<button type="button" class="chip" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost" data-act="tpl" data-tip="자주 쓰는 답글 문구를 고쳐">✎ 문구 편집</button><button type="button" class="chip ghost" data-thread="${esc(c.mediaId)}" data-tip="이 영상 댓글 전체를 최신순으로 봐">💬 영상 댓글</button></div>
       <textarea placeholder="답글 쓰기…" aria-label="답글">${esc(draft)}</textarea>
       <div class="pair">
         <button class="btn primary" data-act="send" data-tip="인스타에 답글을 올려 (설정에서 켜두면 하트도 같이)">답글 전송</button>
@@ -844,6 +866,64 @@ $('fillGo').addEventListener('click', () => {
   renderList();
   flash(n ? `답글 ${n}개 채웠어. 확인하고 전송만 눌러` : '맞는 아이디를 못 찾았어. @아이디로 시작하는 줄이 있는지 봐줘');
   if (n) { $('fillText').value = ''; $('fillBox').open = false; }
+});
+// ---------- 영상 댓글 (앱 안 댓글창, 최신순) ----------
+let thMedia = null;
+function openThread(mediaId) {
+  const m = mediaById(mediaId); if (!m) return;
+  thMedia = mediaId;
+  $('thTitle').textContent = short(m.caption, 34);
+  $('thOpen').href = m.permalink || '#';
+  renderThread();
+  $('thread').classList.remove('hide'); document.body.style.overflow = 'hidden';
+  try { history.pushState({ th: 1 }, ''); } catch (e) {}
+  $('thBody').scrollTop = 0;
+}
+function closeThread() { $('thread').classList.add('hide'); document.body.style.overflow = ''; thMedia = null; render(); }
+function renderThread() {
+  if (!thMedia) return;
+  const list = state.comments.filter(c => c.mediaId === thMedia).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const waitN = list.filter(c => pending().includes(c)).length;
+  $('thSub').textContent = `댓글 ${list.length}개 · 최신순${waitN ? ` · 답 대기 ${waitN}` : ''}`;
+  $('thBody').innerHTML = list.map(c => {
+    const wait = pending().includes(c);
+    const reps = (c.replies || []).slice().sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    return `<div class="tc ${wait ? 'wait' : ''}" data-id="${esc(c.id)}">
+      <div class="t1"><b>@${esc(c.username)}</b><span>${fmtDate(c.timestamp)}</span></div>
+      <div class="t2">${esc(c.text)}</div>
+      ${reps.map(r => `<div class="rp ${isMine(r.username) ? 'me' : ''}"><b>@${esc(r.username)}</b> ${esc(r.text || '')}</div>`).join('')}
+      <div class="acts" style="margin-top:8px">
+        ${isMine(c.username) ? '' : liked.has(c.id) ? `<span class="hb on">${HEART}하트 완료</span>` : `<button type="button" class="hb" data-like="${esc(c.id)}">${HEART}하트</button>`}
+        ${isMine(c.username) ? '' : `<button type="button" class="chip ghost small" data-rbox>답글</button>`}
+      </div>
+    </div>`;
+  }).join('') || '<p class="msg">댓글이 없어</p>';
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-thread]'); if (b) { e.preventDefault(); openThread(b.dataset.thread); } });
+$('thClose').addEventListener('click', () => { if (history.state && history.state.th) history.back(); else closeThread(); });
+window.addEventListener('popstate', () => { if (thMedia) closeThread(); });
+$('thBody').addEventListener('click', async e => {
+  const card = e.target.closest('.tc'); if (!card) return;
+  const c = state.comments.find(x => x.id === card.dataset.id);
+  const lk = e.target.closest('[data-like]');
+  if (lk) { lk.disabled = true; const ok = await likeComment(c.id); ok ? renderThread() : (lk.disabled = false, flash('하트 실패: ' + likeErr)); return; }
+  if (e.target.closest('[data-rbox]')) {
+    if (card.querySelector('.rbox')) return;
+    card.insertAdjacentHTML('beforeend', `<div class="rbox"><textarea aria-label="답글">@${esc(c.username)} </textarea><button type="button" data-rsend>전송</button></div>`);
+    const ta = card.querySelector('textarea'); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); return;
+  }
+  const sb = e.target.closest('[data-rsend]');
+  if (sb) {
+    const text = card.querySelector('textarea').value.trim(); if (!text) return;
+    sb.disabled = true; sb.textContent = '…';
+    try {
+      if (!state.demo) await api(`${c.id}/replies`, { message: text }, 'POST');
+      if ($('autoLike').checked) await likeComment(c.id);
+      c.replies.push({ username: state.me.username, text, timestamp: new Date().toISOString() });
+      if (!state.demo) { replied.add(c.id); store.set('replied', [...replied].slice(-3000)); saveCache(); }
+      renderThread(); flash('답글 보냈어' + (liked.has(c.id) ? ' + ♥' : ''));
+    } catch (err) { sb.disabled = false; sb.textContent = '전송'; flash(err.message.split('\n')[0]); }
+  }
 });
 $('sentList').addEventListener('click', async e => {
   const b = e.target.closest('[data-like]'); if (!b) return;
