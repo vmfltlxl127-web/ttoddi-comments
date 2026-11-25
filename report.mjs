@@ -69,7 +69,9 @@ async function readCover(m) {
   if (!img.ok) throw new Error('표지 다운로드 실패 ' + img.status);
   const data = Buffer.from(await img.arrayBuffer()).toString('base64');
   let lastErr;
-  for (const model of ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash']) {
+  const models = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
+  for (const model of [...models, ...models]) { // 바쁘면 다른 모델로, 한 바퀴 더
+    if (lastErr) await new Promise(r => setTimeout(r, 3000));
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI },
       body: JSON.stringify({ contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: 'image/jpeg', data } }] }], generationConfig: { temperature: 0 } })
@@ -77,7 +79,7 @@ async function readCover(m) {
     const j = await r.json().catch(() => ({}));
     if (r.ok) { const t = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').replace(/\s+/g, ' ').trim(); return /^없음\.?$/.test(t) ? '' : t; }
     lastErr = `${model}: ${j.error?.message || r.status}`;
-    if (r.status !== 404) break;
+    if ([400, 401, 403].includes(r.status)) break; // 키 문제는 바꿔도 소용없음
   }
   throw new Error(lastErr);
 }
@@ -92,7 +94,7 @@ async function autoTitles(list) {
   writeFileSync(AUTO_FILE, JSON.stringify(AUTO, null, 1));
 }
 if (MODE === 'titletest') {
-  const sample = media.filter(m => MANUAL[m.id]).slice(0, Number(process.argv[4] || 12));
+  const sample = media.filter(m => MANUAL[m.id]).slice(0, Number(process.argv[4] || 8));
   for (const m of sample) {
     try { const t = await readCover(m); console.log(`${t === MANUAL[m.id] ? '✅' : '🔸'} 제미나이: ${t}\n   직접 넣은 것: ${MANUAL[m.id]}`); }
     catch (e) { console.log('❌ ' + e.message); }
