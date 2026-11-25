@@ -76,6 +76,7 @@ a.txt{background:linear-gradient(transparent 62%,var(--pl) 62%);border-radius:2p
 .sent .s-top{display:flex;justify-content:space-between;font-size:12px;color:var(--sub)}
 .sent .s-orig{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hb{display:inline-flex;align-items:center;gap:5px;border:1.5px solid #FFC2CB;background:#fff;color:#E5484D;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}
+.hb.maybe{color:var(--sub);border-color:var(--line)}
 .hb.on{background:#FFE8EC;border-color:#FFE8EC;cursor:default}
 .sent .s-me{font-size:15px;font-weight:600;overflow-wrap:anywhere}
 .thread{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column}
@@ -197,7 +198,7 @@ body:not(.ready) .needs{display:none}
     </details>
     <details class="fill" id="sentBox">
       <summary>최근 보낸 답글 <span>▾</span></summary>
-      <div class="fill-in" id="sentList"></div>
+      <div class="fill-in"><button class="btn line" id="heartSync" style="height:44px" data-tip="최근 답글 단 댓글 중 하트가 확인 안 된 것에 하트를 눌러서 맞춰줘. 이미 눌린 건 그대로야">하트 상태 맞추기</button><div id="sentList"></div></div>
     </details>
     <div class="sheet hide" id="tplSheet">
       <label for="tpl">빠른 답글 문구 · 한 줄에 하나</label>
@@ -518,6 +519,12 @@ function render() {
 }
 
 const HEART = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 3 5 6.6 5c2 0 3.4 1.1 4.2 2.4h2.4C14 6.1 15.4 5 17.4 5 21 5 23 8.6 21.6 11.8 19.5 16.4 12 21 12 21z"/></svg>';
+// 하트 상태: 앱에서 누른 건 '완료', 좋아요 0개면 확실히 '안 누름', 그 외엔 인스타에서 눌렀을 수 있어 '확인 필요'
+function heartBadge(c) {
+  if (liked.has(c.id)) return `<span class="hb on">${HEART}하트 완료</span>`;
+  if (!c.like_count) return `<button type="button" class="hb" data-like="${esc(c.id)}" data-tip="아직 아무도 하트를 안 눌렀어. 누르면 하트가 들어가">${HEART}하트 누르기</button>`;
+  return `<button type="button" class="hb maybe" data-like="${esc(c.id)}" data-tip="하트 ${c.like_count}개가 있어. 인스타에서 이미 눌렀을 수 있어. 다시 눌러도 중복으로 안 들어가">${HEART}♥${c.like_count} · 확인</button>`;
+}
 function renderSent() {
   const out = [];
   for (const c of state.comments) for (const r of c.replies || []) if (isMine(r.username) && r.text) out.push({ c, r });
@@ -525,9 +532,7 @@ function renderSent() {
   const top = out.slice(0, 15);
   $('sentList').innerHTML = top.map(({ c, r }) => {
     const url = cmtUrl(c);
-    const heart = liked.has(c.id)
-      ? `<span class="hb on">${HEART}하트 완료</span>`
-      : `<button type="button" class="hb" data-like="${esc(c.id)}" data-tip="이 댓글에 하트를 눌러">${HEART}하트 누르기</button>`;
+    const heart = heartBadge(c);
     return `<div class="sent"><div class="s-top"><b style="color:var(--ink)">@${esc(c.username)}</b><span>${r.timestamp ? fmtDate(r.timestamp) : ''}</span></div>
       ${url ? `<a class="s-orig" href="${esc(url)}" target="_blank" rel="noopener">${esc(c.text)}</a>` : `<div class="s-orig">${esc(c.text)}</div>`}
       <div class="s-me">↳ ${esc(r.text)}</div><div class="acts" style="display:flex;gap:6px;flex-wrap:wrap">${heart}<button type="button" class="hb" style="color:var(--p);border-color:var(--pl)" data-thread="${esc(c.mediaId)}">💬 영상 댓글</button></div></div>`;
@@ -893,7 +898,7 @@ function renderThread() {
       <div class="t2">${esc(c.text)}</div>
       ${reps.map(r => `<div class="rp ${isMine(r.username) ? 'me' : ''}"><b>@${esc(r.username)}</b> ${esc(r.text || '')}</div>`).join('')}
       <div class="acts" style="margin-top:8px">
-        ${isMine(c.username) ? '' : liked.has(c.id) ? `<span class="hb on">${HEART}하트 완료</span>` : `<button type="button" class="hb" data-like="${esc(c.id)}">${HEART}하트</button>`}
+        ${isMine(c.username) ? '' : heartBadge(c)}
         ${isMine(c.username) ? '' : `<button type="button" class="chip ghost small" data-rbox>답글</button>`}
       </div>
     </div>`;
@@ -924,6 +929,13 @@ $('thBody').addEventListener('click', async e => {
       renderThread(); flash('답글 보냈어' + (liked.has(c.id) ? ' + ♥' : ''));
     } catch (err) { sb.disabled = false; sb.textContent = '전송'; flash(err.message.split('\n')[0]); }
   }
+});
+$('heartSync').addEventListener('click', async () => {
+  const ids = [...$('sentList').querySelectorAll('[data-like]')].map(b => b.dataset.like);
+  if (!ids.length) { flash('다 맞춰져 있어'); return; }
+  const btn = $('heartSync'); btn.disabled = true; let n = 0;
+  for (const id of ids) { btn.textContent = `맞추는 중… ${++n}/${ids.length}`; await likeComment(id); await new Promise(r => setTimeout(r, state.demo ? 30 : 2500)); }
+  btn.disabled = false; btn.textContent = '하트 상태 맞추기'; renderSent(); flash(`하트 ${ids.length}개 확인 완료`);
 });
 $('sentList').addEventListener('click', async e => {
   const b = e.target.closest('[data-like]'); if (!b) return;
