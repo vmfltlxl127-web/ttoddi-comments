@@ -1,15 +1,19 @@
 name: ocr-test
 on: workflow_dispatch
-permissions:
-  contents: write
 jobs:
-  t:
+  easy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: node ocrtest.mjs
+      - run: pip install -q easyocr --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python ocrtest.py easy
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
-      - run: |
-          git config user.name bot; git config user.email bot@users.noreply.github.com
-          git checkout -q --orphan ocrtest && git rm -rq --cached . && git add covers && git commit -qm covers && git push -qf origin ocrtest
+  paddle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q paddlepaddle paddleocr
+      - run: python ocrtest.py paddle
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
