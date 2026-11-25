@@ -43,10 +43,10 @@ jobs:
         if: always()
         run: |
           [ -s snaps.json ] || exit 0
-          cp snaps.json /tmp/snaps.json
+          mv snaps.json /tmp/snaps.json
           git config user.name "keysbrown-bot"
           git config user.email "keysbrown-bot@users.noreply.github.com"
-          if git show-ref --quiet refs/heads/stats; then git checkout -q stats; else git checkout -q --orphan stats && git rm -rq --cached . && git clean -fdq; fi
+          if git show-ref --quiet refs/heads/stats; then git checkout -qf stats; else git checkout -q --orphan stats && git rm -rq --cached . && git clean -fdq; fi
           cp /tmp/snaps.json snaps.json
           git add snaps.json
           git diff --cached --quiet || git commit -qm "기록 $(TZ=Asia/Seoul date '+%m/%d %H:%M')"
