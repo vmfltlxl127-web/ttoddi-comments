@@ -508,7 +508,10 @@ const short = (s, n = 40) => { s = (s || '(캡션 없음)').replace(/\s+/g, ' ')
 const num = n => (n ?? 0).toLocaleString('ko-KR');
 // 릴스 제목: 표지 글자(titles.json) 우선, 없으면 캡션 첫 줄
 let TITLES = {};
-fetch('./titles.json?t=' + Math.floor(Date.now() / 300e3)).then(r => r.ok ? r.json() : {}).then(d => { TITLES = d || {}; if (state.me) { render(); renderStats(); } }).catch(() => {});
+{ const v = Math.floor(Date.now() / 300e3), get = u => fetch(u).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  // 직접 넣은 제목(titles.json)이 자동 인식(autotitles.json)보다 우선
+  Promise.all([get('https://raw.githubusercontent.com/vmfltlxl127-web/ttoddi-comments/stats/autotitles.json?t=' + v), get('./titles.json?t=' + v)])
+    .then(([auto, manual]) => { TITLES = { ...Object.fromEntries(Object.entries(auto || {}).filter(([, t]) => t)), ...(manual || {}) }; if (state.me) { render(); renderStats(); } }); }
 const titleOf = (m, n = 24) => short(m ? (TITLES[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim()) : '', n);
 // 최신 영상 = 가장 최근에 올린 날의 영상 전부
 const latestGroup = media => { if (!media.length) return []; const d = dayStart(media[0].timestamp); return media.filter(m => dayStart(m.timestamp) === d); };

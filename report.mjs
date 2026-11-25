@@ -52,10 +52,56 @@ const nextSpecial = n => { for (let k = n + 1; k < n + 200000; k++) if (isSpecia
 const me = await api(USER, { fields: isIG ? 'id,user_id,username,followers_count' : 'id,username,followers_count' });
 const myName = (me.username || '').toLowerCase();
 const isMine = u => (u || '').toLowerCase() === myName;
-const mediaFields = 'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count';
+const mediaFields = 'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,thumbnail_url';
 const media = (await allPages(await api(`${USER}/media`, { fields: mediaFields, limit: 50 })))
   .filter(m => m.media_type === 'VIDEO' || m.media_product_type === 'REELS')
   .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+// ---- 표지 제목 자동 인식 (제미나이) ----
+const GEMINI = (process.env.GEMINI_API_KEY || '').trim();
+const AUTO_FILE = 'autotitles.json';
+let MANUAL = {}, AUTO = {};
+try { MANUAL = JSON.parse(readFileSync(new URL('./titles.json', import.meta.url), 'utf8')); } catch (e) {}
+try { AUTO = JSON.parse(readFileSync(AUTO_FILE, 'utf8')); } catch (e) {}
+const PROMPT = '이 이미지는 인스타그램 릴스 표지야. 표지에 가장 크게 쓰인 메인 제목 문구만 표지에 적힌 그대로 적어줘. 줄바꿈은 띄어쓰기로 바꾸고, 작은 부가 글씨·워터마크·가격표·상품명 같은 배경 글씨는 빼. 설명 없이 제목만 답해. 제목 글자가 없으면 없음 이라고만 답해.';
+async function readCover(m) {
+  const img = await fetch(m.thumbnail_url);
+  if (!img.ok) throw new Error('표지 다운로드 실패 ' + img.status);
+  const data = Buffer.from(await img.arrayBuffer()).toString('base64');
+  let lastErr;
+  for (const model of ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash']) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI },
+      body: JSON.stringify({ contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: 'image/jpeg', data } }] }], generationConfig: { temperature: 0 } })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) { const t = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').replace(/\s+/g, ' ').trim(); return /^없음\.?$/.test(t) ? '' : t; }
+    lastErr = `${model}: ${j.error?.message || r.status}`;
+    if (r.status !== 404) break;
+  }
+  throw new Error(lastErr);
+}
+async function autoTitles(list) {
+  if (!GEMINI) return;
+  for (const m of list) {
+    if (!m.thumbnail_url) continue;
+    try { AUTO[m.id] = await readCover(m); console.log(`표지 제목: ${m.id} → ${AUTO[m.id] || '(제목 없음)'}`); }
+    catch (e) { console.log(`표지 인식 실패 ${m.id}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 4500)); // 무료 한도(분당 요청 수) 여유
+  }
+  writeFileSync(AUTO_FILE, JSON.stringify(AUTO, null, 1));
+}
+if (MODE === 'titletest') {
+  const sample = media.filter(m => MANUAL[m.id]).slice(0, Number(process.argv[4] || 12));
+  for (const m of sample) {
+    try { const t = await readCover(m); console.log(`${t === MANUAL[m.id] ? '✅' : '🔸'} 제미나이: ${t}\n   직접 넣은 것: ${MANUAL[m.id]}`); }
+    catch (e) { console.log('❌ ' + e.message); }
+    await new Promise(r => setTimeout(r, 4500));
+  }
+  process.exit(0);
+}
+// 제목 없는 새 릴스만 인식 (한 번 읽으면 저장해두고 다시 안 읽음)
+await autoTitles(media.filter(m => !MANUAL[m.id] && !(m.id in AUTO)).slice(0, 5));
 
 // ---- 기록 (앱과 같은 형식: {t, f, m:{릴스id: 좋아요}}) ----
 const now = Date.now();
@@ -108,9 +154,7 @@ function dayStats(days, ids) {
   });
 }
 
-let TITLES = {};
-try { TITLES = JSON.parse(readFileSync(new URL('./titles.json', import.meta.url), 'utf8')); } catch (e) {}
-const titleOf = (m, n = 26) => short(TITLES[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim(), n);
+const titleOf = (m, n = 26) => short(MANUAL[m.id] || AUTO[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim(), n);
 const md = t => { const x = kst(t); return `${x.getUTCMonth() + 1}/${x.getUTCDate()}`; };
 
 const today = dayStart(now), yest = today - 864e5;
