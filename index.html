@@ -42,7 +42,10 @@ h2{font-size:24px;font-weight:800;margin:4px 0 12px}
 .err:empty{display:none}
 .confirm{background:var(--ink);color:#fff;border-radius:18px;padding:14px;margin-top:10px}
 .likelist{max-height:46vh;overflow:auto;margin-top:10px;border-radius:12px;background:#24212D}
-.likelist label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid #34303F;font-size:13px;line-height:1.4;cursor:pointer}
+.likelist .lrow{position:relative;overflow:hidden;border-bottom:1px solid #34303F}
+.likelist .lrm{position:absolute;right:0;top:0;bottom:0;width:76px;border:0;background:#FF5A6E;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.likelist label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;font-size:13px;line-height:1.4;cursor:pointer;position:relative;background:#24212D;transition:transform .2s;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.likelist .lrow.open label{transform:translateX(-76px)}
 .likelist input{width:20px;height:20px;accent-color:#FF5A6E;flex:none;margin-top:1px}
 .likelist small{display:block;color:#A9A4BD;font-size:11px}
 .confirm .pair{margin-top:10px}.confirm .btn{height:44px}
@@ -631,6 +634,7 @@ $('autoLike').checked = store.get('autoLike', true);
 $('noTag').addEventListener('change', () => { store.set('noTag', $('noTag').checked); if (state.me) render(); });
 $('autoLike').addEventListener('change', () => store.set('autoLike', $('autoLike').checked));
 const likeSince = new Date('2026-11-25T00:00:00+09:00').getTime();
+let noLike = new Set(store.get('noLike', [])); // 일괄 하트에서 뺀 댓글
 let likeCand = [];
 function updLikeQ() {
   const n = [...$('likeListBox').querySelectorAll('input:checked')].length;
@@ -642,14 +646,52 @@ $('likeAll').addEventListener('click', () => {
   if (!state.me) { flash('먼저 불러오기를 해줘'); return; }
   if (likeRunning) return;
   const f = $('filterVid').value;
-  likeCand = state.comments.filter(c => (!f || c.mediaId === f) && !isMine(c.username) && !liked.has(c.id) && new Date(c.timestamp).getTime() >= likeSince)
+  likeCand = state.comments.filter(c => (!f || c.mediaId === f) && !isMine(c.username) && !liked.has(c.id) && !noLike.has(c.id) && new Date(c.timestamp).getTime() >= likeSince)
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   if (!likeCand.length) { $('likeConfirm').classList.add('hide'); flash('하트 누를 댓글이 없어. 이미 다 눌렀어!'); return; }
-  $('likeListBox').innerHTML = likeCand.map(c => `<label><input type="checkbox" checked data-id="${esc(c.id)}"><span><b>@${esc(c.username)}</b> ${esc(short(c.text, 60))}<small>${fmtDate(c.timestamp)} · ${esc(titleOf(mediaById(c.mediaId), 22))}</small></span></label>`).join('');
+  $('likeListBox').innerHTML = likeCand.map(c => `<div class="lrow" data-id="${esc(c.id)}"><button class="lrm" type="button" aria-label="목록에서 제거">제거</button><label><input type="checkbox" checked data-id="${esc(c.id)}"><span><b>@${esc(c.username)}</b> ${esc(short(c.text, 60))}<small>${fmtDate(c.timestamp)} · ${esc(titleOf(mediaById(c.mediaId), 22))}</small></span></label></div>`).join('');
   updLikeQ();
   $('likeConfirm').classList.remove('hide');
 });
 $('likeListBox').addEventListener('change', updLikeQ);
+// 왼쪽으로 밀면 '제거' 버튼 → 누르면 이 댓글은 일괄 하트 목록에서 계속 빠짐
+{
+  let sw = null;
+  const closeAll = except => $('likeListBox').querySelectorAll('.lrow.open').forEach(r => { if (r !== except) r.classList.remove('open'); });
+  $('likeListBox').addEventListener('pointerdown', e => {
+    const lab = e.target.closest('.lrow label'); if (!lab || likeRunning) return;
+    sw = { lab, row: lab.parentElement, x: e.clientX, y: e.clientY, dx: 0, on: false, open: lab.parentElement.classList.contains('open') };
+  });
+  $('likeListBox').addEventListener('pointermove', e => {
+    if (!sw) return;
+    const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+    if (!sw.on) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) { sw.on = true; closeAll(sw.row); sw.lab.style.transition = 'none'; } else if (Math.abs(dy) > 10) { sw = null; return; } else return; }
+    sw.dx = dx;
+    sw.lab.style.transform = `translateX(${Math.max(-90, Math.min(0, (sw.open ? -76 : 0) + dx))}px)`;
+  });
+  const end = () => {
+    if (!sw) return;
+    const { lab, row, on, dx, open } = sw; sw = null;
+    lab.style.transition = ''; lab.style.transform = '';
+    if (!on) { if (open) { row.classList.remove('open'); row.dataset.skip = '1'; } return; }
+    row.classList.toggle('open', (open ? -76 : 0) + dx < -38);
+    row.dataset.skip = '1'; // 민 건 체크 토글로 치지 않기
+  };
+  $('likeListBox').addEventListener('pointerup', end);
+  $('likeListBox').addEventListener('pointercancel', end);
+  $('likeListBox').addEventListener('click', e => {
+    const row = e.target.closest('.lrow'); if (!row) return;
+    if (e.target.closest('.lrm')) {
+      const id = row.dataset.id;
+      noLike.add(id); store.set('noLike', [...noLike].slice(-2000));
+      likeCand = likeCand.filter(c => c.id !== id); row.remove(); updLikeQ();
+      flash('뺐어. 다음부터 일괄 하트 목록에 안 나와');
+      if (!likeCand.length) $('likeConfirm').classList.add('hide');
+      return;
+    }
+    if (row.dataset.skip) { e.preventDefault(); delete row.dataset.skip; }
+  }, true);
+}
 $('likeAllToggle').addEventListener('click', () => {
   const boxes = [...$('likeListBox').querySelectorAll('input')];
   const all = boxes.every(b => b.checked);
