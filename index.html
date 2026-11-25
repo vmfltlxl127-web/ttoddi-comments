@@ -12,8 +12,8 @@
 <style>
 :root{--bg:#F4F2FA;--card:#fff;--ink:#17151F;--sub:#6B6780;--mute:#9A96AC;--p:#6C3CE0;--pd:#3B1E8F;--pl:#EEE8FD;--y:#FFD43B;--line:#ECE8F5;--red:#E5484D}
 *{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
-html{background:var(--bg)}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Pretendard Variable",Pretendard,system-ui,sans-serif;letter-spacing:-0.03em;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+html{background:#fff}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.5 "Pretendard Variable",Pretendard,system-ui,sans-serif;letter-spacing:-0.03em;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 button,input,select,textarea{font:inherit;letter-spacing:inherit;color:inherit}
 a{color:var(--p)}
 .wrap{max-width:560px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 18px 0}
@@ -115,7 +115,7 @@ input.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:
 input.sw:checked{background:var(--p)}input.sw:checked::after{transform:translateX(20px)}
 details.help summary{cursor:pointer;color:var(--sub);font-size:13px;padding:12px 2px}
 details.help ol{font-size:13px;color:var(--sub);padding-left:18px;margin:0 0 12px}
-nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}
 .tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mute);cursor:pointer;padding:4px 0}
 .tab svg{width:34px;height:34px;filter:grayscale(1);opacity:.45;transition:transform .15s,opacity .15s}
 .tab.on{color:var(--ink);font-weight:800}
@@ -793,7 +793,7 @@ $('load').addEventListener('click', () => load().then(() => {
   store.set('knownPending', [...knownPending].slice(-500));
   checkFol(); scheduleFol();
 }));
-(function boot() {
+setTimeout(function boot() {
   const c = store.get(CACHE_KEY, null);
   if (c && store.get('token', '')) {
     state = { me: c.me, media: c.media, comments: c.comments, demo: false };
@@ -806,7 +806,7 @@ $('load').addEventListener('click', () => load().then(() => {
     }, 100);
   } else if (store.get('token', '')) setTimeout(() => $('load').click(), 300);
   else go('set');
-})();
+}, 0);
 // 앱으로 다시 돌아오면 조용히 새로 확인
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && state.me && !state.demo && Date.now() - (store.get(CACHE_KEY, {}).at || 0) > 60e3) load({ quiet: true });
