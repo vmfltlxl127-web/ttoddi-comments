@@ -110,7 +110,7 @@ function dayStats(days, ids) {
 
 let TITLES = {};
 try { TITLES = JSON.parse(readFileSync(new URL('./titles.json', import.meta.url), 'utf8')); } catch (e) {}
-const titleOf = (m, n = 24) => short(TITLES[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim(), n);
+const titleOf = (m, n = 26) => short(TITLES[m.id] || (m.caption || '').split('\n')[0].replace(/#\S+/g, '').trim(), n);
 const md = t => { const x = kst(t); return `${x.getUTCMonth() + 1}/${x.getUTCDate()}`; };
 
 const today = dayStart(now), yest = today - 864e5;
