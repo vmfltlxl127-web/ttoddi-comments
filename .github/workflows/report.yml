@@ -28,6 +28,7 @@ jobs:
           git fetch origin stats:stats 2>/dev/null || true
           git show stats:snaps.json > snaps.json 2>/dev/null || echo "[]" > snaps.json
           git show stats:autotitles.json > autotitles.json 2>/dev/null || echo "{}" > autotitles.json
+          git show stats:lastreport.txt > lastreport.txt 2>/dev/null || true
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -36,6 +37,7 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WHO: jjjjwwwwon
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then
@@ -48,11 +50,13 @@ jobs:
           [ -s snaps.json ] || exit 0
           mv snaps.json /tmp/snaps.json
           mv autotitles.json /tmp/autotitles.json 2>/dev/null || true
+          mv lastreport.txt /tmp/lastreport.txt 2>/dev/null || true
           git config user.name "keysbrown-bot"
           git config user.email "keysbrown-bot@users.noreply.github.com"
           if git show-ref --quiet refs/heads/stats; then git checkout -qf stats; else git checkout -q --orphan stats && git rm -rq --cached . && git clean -fdq; fi
           cp /tmp/snaps.json snaps.json
           [ -f /tmp/autotitles.json ] && cp /tmp/autotitles.json autotitles.json
-          git add snaps.json $( [ -f autotitles.json ] && echo autotitles.json )
+          [ -f /tmp/lastreport.txt ] && cp /tmp/lastreport.txt lastreport.txt
+          git add snaps.json $( [ -f autotitles.json ] && echo autotitles.json ) $( [ -f lastreport.txt ] && echo lastreport.txt )
           git diff --cached --quiet || git commit -qm "기록 $(TZ=Asia/Seoul date '+%m/%d %H:%M')"
           git push -q origin stats

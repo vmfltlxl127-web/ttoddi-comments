@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const TOKEN = (process.env.IG_TOKEN || '').trim();
 const TOPIC = (process.env.NTFY_TOPIC || '').trim();
 const IGID = (process.env.IG_ID || '17841404405169869').trim();
-const MODE = process.argv[2] || 'snap';
+let MODE = process.argv[2] || 'snap';
 const SNAP_FILE = process.argv[3] || 'snaps.json';
 if (!TOKEN) throw new Error('IG_TOKEN 시크릿이 없어');
 
@@ -93,6 +93,14 @@ async function autoTitles(list) {
   }
   writeFileSync(AUTO_FILE, JSON.stringify(AUTO, null, 1));
 }
+if (MODE === 'debugcmt') {
+  const who = (process.env.WHO || '').split(',');
+  for (const m of media.slice(0, 8)) {
+    const first = await api(`${m.id}/comments`, { fields: 'id,text,username,timestamp,like_count,hidden,replies.limit(50){id,text,username}', limit: 50 });
+    for (const c of await allPages(first)) if (who.includes(c.username)) console.log(JSON.stringify({ media: m.id, c }));
+  }
+  process.exit(0);
+}
 if (MODE === 'titletest') {
   const sample = media.filter(m => MANUAL[m.id]).slice(0, Number(process.argv[4] || 8));
   for (const m of sample) {
@@ -117,6 +125,10 @@ snaps = snaps.filter(x => now - x.t < 40 * 864e5).reverse()
   .reverse();
 writeFileSync(SNAP_FILE, JSON.stringify(snaps));
 console.log(`기록 저장: 릴스 ${media.length}개, 팔로워 ${me.followers_count}, 기록 ${snaps.length}개`);
+const SENT_FILE = 'lastreport.txt';
+const todayKey = (() => { const d = kst(now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; })();
+const lastSent = existsSync(SENT_FILE) ? readFileSync(SENT_FILE, 'utf8').trim() : '';
+if (MODE === 'snap' && kst(now).getUTCHours() >= 11 && lastSent !== todayKey) { MODE = 'report'; console.log('오늘 리포트 아직 안 보냄 → 지금 보냄'); }
 if (MODE !== 'report') process.exit(0);
 
 // ---- 댓글 (하루 댓글 수 · 답 안 단 댓글 수) ----
@@ -178,4 +190,4 @@ console.log(text);
 if (!TOPIC) throw new Error('NTFY_TOPIC 시크릿이 없어 — 리포트는 만들었는데 폰으로는 못 보냈어');
 const r = await fetch(`https://ntfy.sh/${encodeURIComponent(TOPIC)}?${new URLSearchParams({ title: 'Keysbrown', tags: 'bar_chart' })}`, { method: 'POST', body: text });
 if (!r.ok) throw new Error('ntfy 전송 실패 ' + r.status);
-console.log('폰으로 보냄');
+writeFileSync(SENT_FILE, todayKey); console.log('폰으로 보냄');
