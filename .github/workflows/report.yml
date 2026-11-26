@@ -2,7 +2,7 @@ name: 매일 리포트
 
 on:
   schedule:
-    - cron: '7 2 * * *'    # 매일 오전 11:07 (한국 시간) — 리포트 보내기
+    - cron: '3 0 * * *'    # 매일 오전 9:03 (한국 시간) — 리포트 보내기
     - cron: '37 * * * *'   # 매시간 37분 — 좋아요·팔로워 기록
   workflow_dispatch:        # Actions 화면에서 '지금 실행' 버튼
     inputs:
@@ -40,7 +40,7 @@ jobs:
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then
-            if [ "${{ github.event.schedule }}" = "7 2 * * *" ]; then MODE=report; else MODE=snap; fi
+            if [ "${{ github.event.schedule }}" = "3 0 * * *" ]; then MODE=report; else MODE=snap; fi
           fi
           # 직접 실행(지금 실행 버튼)은 오늘 이미 보냈어도 다시 보냄, 자동 실행은 하루 1번만
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then export FORCE=1; fi

@@ -128,7 +128,7 @@ console.log(`기록 저장: 릴스 ${media.length}개, 팔로워 ${me.followers_
 const SENT_FILE = 'lastreport.txt';
 const todayKey = (() => { const d = kst(now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; })();
 const lastSent = existsSync(SENT_FILE) ? readFileSync(SENT_FILE, 'utf8').trim() : '';
-if (MODE === 'snap' && kst(now).getUTCHours() >= 11 && lastSent !== todayKey) { MODE = 'report'; console.log('오늘 리포트 아직 안 보냄 → 지금 보냄'); }
+if (MODE === 'snap' && kst(now).getUTCHours() >= 9 && lastSent !== todayKey) { MODE = 'report'; console.log('오늘 리포트 아직 안 보냄 → 지금 보냄'); }
 if (MODE === 'report' && lastSent === todayKey && process.env.FORCE !== '1') { console.log('오늘 리포트 이미 보냄 → 건너뜀'); MODE = 'snap'; }
 if (MODE !== 'report') process.exit(0);
 
@@ -179,16 +179,23 @@ const lastDay = media.length ? dayStart(new Date(media[0].timestamp).getTime()) 
 const latest = media.filter(m => dayStart(new Date(m.timestamp).getTime()) === lastDay);
 const g = v => v == null ? '-' : (v > 0 ? '+' : '') + num(v);
 const yd = kst(yest);
+// 제목 줄이기: 앞에서부터 단어 단위로 8글자까지만, 잘리면 ...
+const shortT = (s, max = 8) => {
+  s = (s || '').replace(/\s+/g, ' ').trim();
+  if (s.length <= max) return s;
+  let out = '';
+  for (const w of s.split(' ')) { const nx = out ? out + ' ' + w : w; if (nx.length > max) break; out = nx; }
+  return (out || s.slice(0, max)) + '...';
+};
 const lines = [
-  `📊 어제 성과 리포트 ${yd.getUTCMonth() + 1}/${yd.getUTCDate()} (${DOW[yd.getUTCDay()]})`,
-  `팔로워 ${g(y.fol)} · 좋아요 ${g(y.like)} · 댓글 ${g(y.cmt)}`,
+  `👤 ${g(y.fol)}  🩷 ${g(y.like)}  💬 ${g(y.cmt)}`,
   '',
-  ...latest.map(m => { const r = dayStats([yest], [m.id])[0]; return `🆕 ${lastDay === yest ? '' : `(${md(lastDay)}) `}${titleOf(m)} ❤️${g(r.like)} 💬${g(r.cmt)}`; })
+  ...latest.map(m => { const r = dayStats([yest], [m.id])[0]; return `🆕 ${shortT(titleOf(m, 200))} 🩷${g(r.like)} 💬${g(r.cmt)}`; })
 ];
 const text = lines.join('\n').trim();
 console.log(text);
 
 if (!TOPIC) throw new Error('NTFY_TOPIC 시크릿이 없어 — 리포트는 만들었는데 폰으로는 못 보냈어');
-const r = await fetch(`https://ntfy.sh/${encodeURIComponent(TOPIC)}?${new URLSearchParams({ title: 'Keysbrown', tags: 'bar_chart' })}`, { method: 'POST', body: text });
+const r = await fetch(`https://ntfy.sh/${encodeURIComponent(TOPIC)}?${new URLSearchParams({ title: '📊 어제 성과 리포트' })}`, { method: 'POST', body: text });
 if (!r.ok) throw new Error('ntfy 전송 실패 ' + r.status);
 writeFileSync(SENT_FILE, todayKey); console.log('폰으로 보냄');
