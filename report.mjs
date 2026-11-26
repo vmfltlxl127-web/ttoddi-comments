@@ -42,6 +42,7 @@ function isSpecial(n) {
   const s = String(n);
   if (s.length < 3) return false;
   if (/^(\d)\1+$/.test(s)) return true;
+  if (n >= 1414 && /^(\d\d)\1$/.test(s)) return true; // 1414, 1515, 1616 (두 자리 반복)
   let up = true, down = true;
   for (let i = 1; i < s.length; i++) { if (+s[i] !== +s[i - 1] + 1) up = false; if (+s[i] !== +s[i - 1] - 1) down = false; }
   return up || down;
