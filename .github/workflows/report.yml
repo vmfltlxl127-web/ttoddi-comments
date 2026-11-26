@@ -42,6 +42,8 @@ jobs:
           if [ -z "$MODE" ]; then
             if [ "${{ github.event.schedule }}" = "7 2 * * *" ]; then MODE=report; else MODE=snap; fi
           fi
+          # 직접 실행(지금 실행 버튼)은 오늘 이미 보냈어도 다시 보냄, 자동 실행은 하루 1번만
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then export FORCE=1; fi
           node report.mjs "$MODE" snaps.json
       - name: 기록 저장 (stats 브랜치)
         if: always()

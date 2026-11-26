@@ -129,6 +129,7 @@ const SENT_FILE = 'lastreport.txt';
 const todayKey = (() => { const d = kst(now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; })();
 const lastSent = existsSync(SENT_FILE) ? readFileSync(SENT_FILE, 'utf8').trim() : '';
 if (MODE === 'snap' && kst(now).getUTCHours() >= 11 && lastSent !== todayKey) { MODE = 'report'; console.log('오늘 리포트 아직 안 보냄 → 지금 보냄'); }
+if (MODE === 'report' && lastSent === todayKey && process.env.FORCE !== '1') { console.log('오늘 리포트 이미 보냄 → 건너뜀'); MODE = 'snap'; }
 if (MODE !== 'report') process.exit(0);
 
 // ---- 댓글 (하루 댓글 수 · 답 안 단 댓글 수) ----
