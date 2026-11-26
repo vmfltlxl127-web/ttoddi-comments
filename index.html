@@ -891,7 +891,7 @@ function isSpecial(n) {
   const s = String(n);
   if (s.length < 3) return false;
   if (/^(\d)\1+$/.test(s)) return true; // 2222, 3333
-  if (n >= 1414 && /^(\d\d)\1$/.test(s)) return true; // 1414, 1515, 1616 (두 자리 반복)
+  if (/^(\d\d)\1$/.test(s)) return true; // 1313, 1414, 1515 (두 자리 반복)
   let up = true, down = true;
   for (let i = 1; i < s.length; i++) {
     if (+s[i] !== +s[i - 1] + 1) up = false;
@@ -975,6 +975,7 @@ function showFol(n) {
   let text = '';
   if (isSpecial(n)) text = `🎉 팔로워 ${num(n)}명 달성!`;
   else if (isSpecial(n + 1)) text = `⏰ 팔로워 ${num(n)}명! 한 명만 더 오면 ${num(n + 1)}명이야`;
+  { const keep = [...notified].filter(x => Math.abs(x - n) <= 1); if (keep.length !== notified.size) { notified = new Set(keep); store.set('folNotified', keep); } } // 팔로워 빠지면 다시 알릴 수 있게
   if (text && !notified.has(n)) { notified.add(n); store.set('folNotified', [...notified].slice(-50)); alertFol(text); }
   else if (!text) { $('folBanner').classList.add('hide'); document.title = 'Keysbrown'; }
 }
