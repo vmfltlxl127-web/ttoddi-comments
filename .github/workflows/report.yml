@@ -37,7 +37,6 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          WHO: jjjjwwwwon
         run: |
           MODE="${{ github.event.inputs.mode }}"
           if [ -z "$MODE" ]; then
