@@ -920,7 +920,7 @@ function alertFol(text) {
   document.title = '🔔 ' + text;
   beep();
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Keysbrown', { body: text }); } catch (e) {}
-  pushPhone(text);
+  // 폰 알림은 서버(5분마다 팔로워 알림)가 보냄 → 두 번 안 오게 여기선 안 보냄
 }
 // ntfy 폰 알림
 if (!store.get('ntfy', '')) store.set('ntfy', 'ttoddi-' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6));

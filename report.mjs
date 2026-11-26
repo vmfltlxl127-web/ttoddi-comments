@@ -126,21 +126,6 @@ snaps = snaps.filter(x => now - x.t < 40 * 864e5).reverse()
   .reverse();
 writeFileSync(SNAP_FILE, JSON.stringify(snaps));
 console.log(`기록 저장: 릴스 ${media.length}개, 팔로워 ${me.followers_count}, 기록 ${snaps.length}개`);
-// ---- 팔로워 특별 숫자 알림 (앱이 꺼져 있어도 매시간 확인) ----
-{
-  const FOL_FILE = 'folnotified.json', n = me.followers_count;
-  let sentF = []; try { sentF = JSON.parse(readFileSync(FOL_FILE, 'utf8')); } catch (e) {}
-  let msg = '';
-  if (n != null && isSpecial(n)) msg = `🎉 팔로워 ${n.toLocaleString()}명 달성!`;
-  else if (n != null && isSpecial(n + 1)) msg = `⏰ 팔로워 ${n.toLocaleString()}명! 한 명만 더 오면 ${(n + 1).toLocaleString()}명이야`;
-  if (msg && !sentF.includes(n) && TOPIC) {
-    try { await fetch(`https://ntfy.sh/${encodeURIComponent(TOPIC)}?${new URLSearchParams({ title: 'Keysbrown 팔로워', tags: 'tada' })}`, { method: 'POST', body: msg }); console.log('팔로워 알림 보냄: ' + msg); } catch (e) { console.log('팔로워 알림 실패', e.message); }
-    sentF = [...sentF, n].slice(-50);
-  }
-  // 특별 숫자에서 멀어지면(팔로워 빠짐 등) 다시 알릴 수 있게 지움
-  sentF = sentF.filter(x => Math.abs(x - n) <= 1);
-  writeFileSync(FOL_FILE, JSON.stringify(sentF));
-}
 const SENT_FILE = 'lastreport.txt';
 const todayKey = (() => { const d = kst(now); return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`; })();
 const lastSent = existsSync(SENT_FILE) ? readFileSync(SENT_FILE, 'utf8').trim() : '';
