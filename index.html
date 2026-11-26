@@ -189,6 +189,40 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(#fff 
 .hide{display:none!important}
 body:not(.ready) .needs{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* 답글함 배치 편집 */
+.blk{position:relative}
+#actRow .btn{transition:none}
+#actRow.n3 .btn,#actRow.n4 .btn{flex-direction:column;gap:3px;font-size:13px;line-height:1.2;padding:0 4px;text-align:center}
+.lyS #actRow .btn{height:44px}.lyS #actRow.n3 .btn,.lyS #actRow.n4 .btn{height:56px;font-size:12px}
+.lyL #actRow .btn{height:62px;font-size:17px}.lyL #actRow.n3 .btn,.lyL #actRow.n4 .btn{height:74px;font-size:14.5px}
+#actRow.n3 .btn,#actRow.n4 .btn{height:64px}
+#actRow .btn.on{box-shadow:inset 0 0 0 2px var(--p)}
+details.inrow summary{display:none}details.inrow:not([open]){display:none}details.inrow .fill-in{padding-top:16px}
+.hS .hero{padding:12px 14px 12px 16px}.hS .hero b{font-size:32px}.hS .face{width:76px;height:72px}
+.hL .hero{padding:24px 22px 24px 24px}.hL .hero b{font-size:58px}.hL .face{width:128px;height:120px}.hL .hero .hstat span{font-size:14px;padding:5px 12px}
+.hero.cb{flex-wrap:wrap}.hero.cb .hstat{flex:1 0 100%;margin-top:10px}
+.hstatOut{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}.hstatOut span{background:var(--card);color:var(--p);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:800;white-space:nowrap}
+.lyBar{position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;border-radius:16px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lyBar b{font-size:14px}.lyBar span{font-size:12px;opacity:.7;flex:1}
+.lyBar button{border:0;border-radius:10px;padding:7px 12px;font-weight:800;font-size:13px;cursor:pointer;background:#3A3646;color:#fff}
+.lyBar #lyDone{background:var(--y);color:var(--ink)}
+.lyEdit .blk{outline:2px dashed #C3B3F2;outline-offset:4px;border-radius:20px;margin:30px 0 14px}
+.lyEdit .blk.off>:not(.ebar){opacity:.3}
+.ebar{position:absolute;top:-30px;left:0;right:0;display:flex;gap:4px;align-items:center;font-size:12px;z-index:5}
+.ebar b{color:var(--p);font-weight:800;margin-right:auto;white-space:nowrap}
+.ebar button{border:0;border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:12px;font-weight:700;padding:3px 8px;cursor:pointer;box-shadow:0 1px 0 var(--line)}
+.ebar button.on{background:var(--p);color:#fff}
+.ectl{position:absolute;bottom:6px;left:0;right:0;justify-content:center;display:flex;gap:4px;z-index:6}
+.ectl i{font-style:normal;width:20px;height:20px;font-size:10px!important;border-radius:999px;background:var(--ink);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lyEdit #actRow .btn{position:relative;overflow:visible;height:auto!important;min-height:64px;padding:10px 4px 34px}
+.rowAdd{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.rowAdd button{border:1.5px dashed var(--p);background:transparent;color:var(--p);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.chipEd{background:var(--card);border-radius:18px;padding:14px;margin:-2px 0 12px;font-size:13px}
+.chipEd .cr{display:flex;gap:6px;align-items:center;margin-bottom:6px}.chipEd .cr input{padding:9px 11px;font-size:14px}
+.chipEd .cr button,.chipEd .ca{border:0;border-radius:9px;background:var(--bg);font:inherit;font-weight:800;font-size:12px;padding:8px 9px;cursor:pointer;flex:none}
+.chipEd .vars{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 10px}.chipEd .vars button{border:0;background:var(--pl);color:var(--p);border-radius:999px;padding:3px 9px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.chipEd .pos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--bg);border-radius:12px;padding:3px}.chipEd .pos button{border:0;border-radius:9px;background:transparent;padding:7px 0;font:inherit;font-size:12px;font-weight:700;color:var(--sub);cursor:pointer}.chipEd .pos button.on{background:var(--card);color:var(--ink)}
+.chipEd small{color:var(--sub)}
 </style>
 </head>
 <body>
@@ -201,15 +235,22 @@ body:not(.ready) .needs{display:none}
 
   <!-- 답글함 -->
   <section class="view on" id="v-home">
-    <div class="hero">
-      <div><small>답글 기다리는 댓글</small><b><em id="pendCount" style="font-style:normal">0</em><span>개</span></b><div class="hstat" id="heroStat"></div></div>
+    <div class="lyBar hide" id="lyBar"><b>배치 편집 중</b><span>순서·크기 고르고 완료</span><button type="button" id="lyReset">처음대로</button><button type="button" id="lyDone">완료</button></div>
+    <div class="blk" data-blk="hero">
+    <div class="hero" id="heroCard">
+      <div id="heroL"><small>답글 기다리는 댓글</small><b><em id="pendCount" style="font-style:normal">0</em><span>개</span></b><div class="hstat" id="heroStat"></div></div>
       <svg class="face" aria-hidden="true"><use href="#kbLogo"/></svg>
     </div>
-    <div class="pair">
+    <div class="chipEd hide" id="chipEd"></div>
+    </div>
+    <div class="blk" data-blk="row">
+    <div class="pair" id="actRow">
       <button class="btn" id="likeAll" data-tip="11/25부터 달린 댓글에 하트 (태그 댓글 포함, 내 댓글·답글은 제외)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF5A6E" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 3 5 6.6 5c2 0 3.4 1.1 4.2 2.4h2.4C14 6.1 15.4 5 17.4 5 21 5 23 8.6 21.6 11.8 19.5 16.4 12 21 12 21z"/></svg>일괄 하트</button>
       <button class="btn" id="copyAsk" data-tip="답 안 단 댓글을 내 말투 설명이랑 같이 클로드로 보내">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C3CE0" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>클로드 전송</button>
+      <button class="btn" id="rowFill" data-open="fillBox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C3CE0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>답 붙여넣기</button>
+      <button class="btn" id="rowSent" data-open="sentBox"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C3CE0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></svg>보낸 답글</button>
     </div>
     <p class="msg" id="likeMsg"></p>
     <div class="confirm hide" id="likeConfirm">
@@ -217,6 +258,8 @@ body:not(.ready) .needs{display:none}
       <div id="likeListBox" class="likelist"></div>
       <div class="pair"><button class="btn primary" id="likeGo">누르기</button><button class="btn soft" id="likeStop" style="background:#2C2936;color:#fff">취소</button></div>
     </div>
+    </div>
+    <div class="blk" data-blk="fill">
     <details class="fill" id="fillBox">
       <summary>클로드 답 붙여넣기 <span>▾</span></summary>
       <div class="fill-in">
@@ -224,10 +267,13 @@ body:not(.ready) .needs{display:none}
         <button class="btn primary" id="fillGo" data-tip="@아이디를 보고 댓글마다 답글 칸을 자동으로 채워">답글 채우기</button>
       </div>
     </details>
+    </div>
+    <div class="blk" data-blk="sent">
     <details class="fill" id="sentBox">
       <summary>최근 보낸 답글 <span>▾</span></summary>
       <div class="fill-in"><button class="btn line" id="heartSync" style="height:44px" data-tip="최근 답글 단 댓글 중 하트가 확인 안 된 것에 하트를 눌러서 맞춰줘. 이미 눌린 건 그대로야">하트 상태 맞추기</button><div id="sentList"></div></div>
     </details>
+    </div>
     <div class="sheet hide" id="tplSheet">
       <label for="tpl">빠른 답글 문구 · 한 줄에 하나</label>
       <textarea id="tpl" style="min-height:130px"></textarea>
@@ -277,6 +323,7 @@ body:not(.ready) .needs{display:none}
       <div class="row"><label for="sort">정렬</label><select id="sort"><option value="new">최신순</option><option value="old">오래된순</option></select></div>
       <div class="row"><label for="noTag">태그 댓글 빼기</label><input type="checkbox" class="sw" id="noTag" checked></div>
       <div class="row"><label for="autoLike">답글 달면 자동 하트</label><input type="checkbox" class="sw" id="autoLike" checked></div>
+      <div class="row"><span>답글함 배치<br><small style="color:var(--sub);font-size:12px">순서·크기·버튼 줄·하트/팔로워 문구</small></span><button class="act" id="lyOpen">편집하기</button></div>
     </div>
     <div class="group">알림</div>
     <div class="list-card">
@@ -344,6 +391,12 @@ const store = {
 };
 const DEFAULT_TPL = ['뿌릿🥸✌️💛', '감사합니뿌릿....💛', '고마워요 칭구🥸💛', '팩트🐰💛', '컴온베이베🥸🔥', 'ㅋㅋㅋㅋㅋㅋ'];
 
+const LY_DEF = { order: ['hero', 'row', 'fill', 'sent'], row: ['likeAll', 'copyAsk'], off: [], btn: 'M', hero: 'M',
+  chips: ['오늘 ♥ {오늘좋아요}', '팔로워 {팔로워} ({팔로워증감})'], chipPos: 'in' };
+const LY_NAME = { hero: '답글 기다리는 댓글', row: '버튼 줄', fill: '클로드 답 붙여넣기', sent: '최근 보낸 답글', likeAll: '일괄 하트', copyAsk: '클로드 전송' };
+const ROW_EL = { likeAll: 'likeAll', copyAsk: 'copyAsk', fill: 'rowFill', sent: 'rowSent' };
+let ly = Object.assign(JSON.parse(JSON.stringify(LY_DEF)), store.get('layout', {}));
+let lyEditing = false, heroVals = {};
 let state = { me: null, media: [], comments: [], demo: false };
 let stScope = store.get('stScope', 'latest'), stPeriod = store.get('stPeriod', '7'), stMetric = 'like';
 
@@ -599,8 +652,9 @@ function renderList() {
   $('pendCount').textContent = pend.length; $('segWaitN').textContent = pend.length;
   try { // 내 계정 오늘 숫자 (통계와 같은 계산)
     const t = dayStats([dayStart(Date.now())], state.media.map(m => m.id))[0], sg = v => v == null ? '-' : (v > 0 ? '+' : '') + num(v);
-    $('heroStat').innerHTML = `<span>오늘 ♥ ${sg(t.like)}</span><span>팔로워 ${lastFollowers != null ? num(lastFollowers) : '-'}${t.fol != null ? ` (${sg(t.fol)})` : ''}</span>`;
-  } catch (e) { $('heroStat').innerHTML = ''; }
+    heroVals = { '오늘좋아요': sg(t.like), '팔로워': lastFollowers != null ? num(lastFollowers) : '-', '팔로워증감': t.fol != null ? sg(t.fol) : '', '답대기': num(pend.length) };
+  } catch (e) { heroVals = {}; }
+  renderChips();
   $('list').innerHTML = list.map(c => {
     const wait = pendSet.has(c);
     const reps = (c.replies || []).slice().sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -1124,6 +1178,120 @@ document.addEventListener('visibilitychange', () => {
 $('demo').addEventListener('click', () => { demo(); go('home'); notified = new Set(); checkFol(); scheduleFol(); });
 $('filterVid').addEventListener('change', renderList);
 $('sort').addEventListener('change', renderList);
+
+
+// ---------- 답글함 배치 (내가 직접 편집) ----------
+const saveLy = () => { store.set('layout', ly); applyLayout(); };
+const blkEl = k => document.querySelector(`#v-home .blk[data-blk="${k}"]`);
+
+function renderChips() {
+  const out = ly.chips.map(t => t.replace(/\{([^}]+)\}/g, (_, k) => heroVals[k] ?? '')
+    .replace(/\(\s*\)/g, '').trim()).filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('');
+  const hc = $('heroCard'); hc.classList.toggle('cb', ly.chipPos === 'bottom');
+  let ext = document.getElementById('hstatOut');
+  if (ly.chipPos === 'out') {
+    if (!ext) { ext = document.createElement('div'); ext.id = 'hstatOut'; ext.className = 'hstatOut'; hc.after(ext); }
+    ext.innerHTML = out; $('heroStat').innerHTML = ''; $('heroStat').style.display = 'none';
+  } else {
+    if (ext) ext.remove();
+    const hs = $('heroStat'); hs.style.display = ''; hs.innerHTML = out;
+    if (ly.chipPos === 'bottom') hc.appendChild(hs); else $('heroL').appendChild(hs);
+  }
+}
+
+function applyLayout() {
+  const home = $('v-home'), seg = $('inboxSeg');
+  home.classList.toggle('lyEdit', lyEditing); $('lyBar').classList.toggle('hide', !lyEditing);
+  home.classList.remove('lyS', 'lyL', 'hS', 'hL');
+  if (ly.btn !== 'M') home.classList.add('ly' + ly.btn);
+  if (ly.hero !== 'M') home.classList.add('h' + ly.hero);
+  // 버튼 줄
+  const row = $('actRow');
+  Object.entries(ROW_EL).forEach(([k, id]) => { const b = $(id); b.style.display = ly.row.includes(k) && (lyEditing || !ly.off.includes(k)) ? '' : 'none'; b.classList.toggle('itemOff', ly.off.includes(k)); b.style.opacity = ly.off.includes(k) ? '.3' : ''; });
+  ly.row.forEach(k => row.appendChild($(ROW_EL[k])));
+  const n = ly.row.filter(k => lyEditing || !ly.off.includes(k)).length;
+  row.className = 'pair n' + n; row.style.gridTemplateColumns = `repeat(${Math.max(1, n)},minmax(0,1fr))`;
+  // 블록 순서 (버튼 줄에 들어간 건 버튼 줄 바로 밑에서 열림)
+  const inRow = ['fill', 'sent'].filter(k => ly.row.includes(k));
+  ly.order.forEach(k => { if (!inRow.includes(k)) home.insertBefore(blkEl(k), seg); });
+  inRow.slice().reverse().forEach(k => blkEl('row').after(blkEl(k)));
+  ['fill', 'sent'].forEach(k => { const d = $(k + 'Box'); d.classList.toggle('inrow', inRow.includes(k)); blkEl(k).classList.toggle('inrowBlk', inRow.includes(k)); });
+  ly.order.forEach(k => { const el = blkEl(k); const hid = ly.off.includes(k) || (k === 'row' && n === 0 && !lyEditing); el.style.display = (hid && !lyEditing) || (inRow.includes(k) && lyEditing) ? 'none' : ''; el.classList.toggle('off', ly.off.includes(k)); });
+  syncRowOn();
+  // 편집 도구
+  document.querySelectorAll('#v-home .ebar,#v-home .ectl,#v-home .rowAdd').forEach(x => x.remove());
+  $('chipEd').classList.toggle('hide', !lyEditing);
+  if (lyEditing) {
+    const vis = ly.order.filter(k => !inRow.includes(k));
+    vis.forEach((k, i) => {
+      const off = ly.off.includes(k), sz = k === 'hero' ? ly.hero : k === 'row' ? ly.btn : null;
+      const bar = document.createElement('div'); bar.className = 'ebar';
+      bar.innerHTML = `<b>${LY_NAME[k]}</b>` + (i > 0 ? `<button data-ly="up" data-k="${k}">▲</button>` : '') + (i < vis.length - 1 ? `<button data-ly="down" data-k="${k}">▼</button>` : '') +
+        (sz ? ['S', 'M', 'L'].map(z => `<button data-ly="size" data-k="${k}" data-z="${z}" class="${sz === z ? 'on' : ''}">${{ S: '작게', M: '보통', L: '크게' }[z]}</button>`).join('') : '') +
+        (k === 'fill' || k === 'sent' ? `<button data-ly="torow" data-k="${k}">버튼 줄에 넣기</button>` : '') +
+        (k !== 'row' ? `<button data-ly="hide" data-k="${k}">${off ? '보이기' : '숨기기'}</button>` : '');
+      blkEl(k).prepend(bar);
+    });
+    ly.row.forEach((k, i) => {
+      const c = document.createElement('div'); c.className = 'ectl';
+      c.innerHTML = (i > 0 ? `<i data-ly="left" data-k="${k}">◀</i>` : '') + (i < ly.row.length - 1 ? `<i data-ly="right" data-k="${k}">▶</i>` : '') +
+        (k === 'fill' || k === 'sent' ? `<i data-ly="fromrow" data-k="${k}" title="줄로 빼기">↓</i>` : `<i data-ly="hideitem" data-k="${k}">${ly.off.includes(k) ? '+' : '✕'}</i>`);
+      $(ROW_EL[k]).appendChild(c);
+    });
+    renderChipEd();
+  }
+  renderChips();
+}
+function syncRowOn() { ['fill', 'sent'].forEach(k => $(ROW_EL[k]).classList.toggle('on', ly.row.includes(k) && $(k + 'Box').open)); }
+['fillBox', 'sentBox'].forEach(id => $(id).addEventListener('toggle', syncRowOn));
+['rowFill', 'rowSent'].forEach(id => $(id).addEventListener('click', () => { if (lyEditing) return; const d = $($(id).dataset.open); d.open = !d.open; }));
+
+function renderChipEd() {
+  const ed = $('chipEd');
+  ed.innerHTML = `<b style="font-size:14px">하트·팔로워 칸</b> <small>글자 직접 고치기 · {팔로워} 같은 건 숫자로 바뀌어</small>
+    <div class="vars">${['오늘좋아요', '팔로워', '팔로워증감', '답대기'].map(v => `<button type="button" data-var="${v}">{${v}}</button>`).join('')}</div>` +
+    ly.chips.map((t, i) => `<div class="cr"><input type="text" data-chip="${i}" value="${esc(t)}"><button data-chipup="${i}">▲</button><button data-chipdel="${i}">✕</button></div>`).join('') +
+    `<button class="ca" data-chipadd>+ 칸 추가</button>
+    <div style="margin:12px 0 6px;font-weight:800">위치</div>
+    <div class="pos">${[['in', '숫자 아래'], ['bottom', '카드 맨 아래'], ['out', '카드 밖']].map(([v, l]) => `<button data-chippos="${v}" class="${ly.chipPos === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+}
+let lastChipInput = null;
+$('chipEd').addEventListener('focusin', e => { if (e.target.dataset.chip != null) lastChipInput = e.target; });
+$('chipEd').addEventListener('input', e => { const i = e.target.dataset.chip; if (i == null) return; ly.chips[i] = e.target.value; store.set('layout', ly); renderChips(); });
+$('chipEd').addEventListener('mousedown', e => { if (e.target.dataset.var) e.preventDefault(); });
+$('chipEd').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return; const d = t.dataset;
+  if (d.var) { const inp = lastChipInput || $('chipEd').querySelector('input[data-chip]'); if (!inp) return;
+    const p = inp.selectionStart ?? inp.value.length; inp.value = inp.value.slice(0, p) + `{${d.var}}` + inp.value.slice(inp.selectionEnd ?? p);
+    ly.chips[inp.dataset.chip] = inp.value; store.set('layout', ly); renderChips(); inp.focus(); return; }
+  if (d.chipup != null) { const i = +d.chipup; if (i > 0) [ly.chips[i - 1], ly.chips[i]] = [ly.chips[i], ly.chips[i - 1]]; }
+  else if (d.chipdel != null) ly.chips.splice(+d.chipdel, 1);
+  else if ('chipadd' in d) ly.chips.push('');
+  else if (d.chippos) ly.chipPos = d.chippos;
+  else return;
+  saveLy();
+});
+// 편집 중엔 원래 버튼 기능 막고 편집만
+$('v-home').addEventListener('click', e => {
+  if (!lyEditing) return;
+  const t = e.target.closest('[data-ly]');
+  if (!t) { if (!e.target.closest('#chipEd,#lyBar')) { e.preventDefault(); e.stopPropagation(); } return; }
+  e.preventDefault(); e.stopPropagation();
+  const k = t.dataset.k, a = t.dataset.ly, mv = (arr, i, j) => { if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+  if (a === 'up' || a === 'down') { const vis = ly.order.filter(x => !(['fill', 'sent'].includes(x) && ly.row.includes(x))); const i = vis.indexOf(k), j = i + (a === 'up' ? -1 : 1); if (j < 0 || j >= vis.length) return; mv(ly.order, ly.order.indexOf(k), ly.order.indexOf(vis[j])); }
+  if (a === 'size') { if (k === 'hero') ly.hero = t.dataset.z; else ly.btn = t.dataset.z; }
+  if (a === 'hide') ly.off = ly.off.includes(k) ? ly.off.filter(x => x !== k) : [...ly.off, k];
+  if (a === 'torow') { if (!ly.row.includes(k)) ly.row.push(k); ly.off = ly.off.filter(x => x !== k); $(k + 'Box').open = false; }
+  if (a === 'fromrow') ly.row = ly.row.filter(x => x !== k);
+  if (a === 'left' || a === 'right') { const i = ly.row.indexOf(k); mv(ly.row, i, i + (a === 'left' ? -1 : 1)); }
+  if (a === 'hideitem') ly.off = ly.off.includes(k) ? ly.off.filter(x => x !== k) : [...ly.off, k];
+  saveLy();
+}, true);
+$('v-home').addEventListener('toggle', e => { if (lyEditing && e.target.tagName === 'DETAILS' && e.target.open) e.target.open = false; }, true);
+$('lyOpen').addEventListener('click', () => { lyEditing = true; go('home'); applyLayout(); });
+$('lyDone').addEventListener('click', () => { lyEditing = false; ly.chips = ly.chips.filter(x => x.trim()); saveLy(); flash('배치 저장했어'); });
+$('lyReset').addEventListener('click', () => { ly = JSON.parse(JSON.stringify(LY_DEF)); saveLy(); });
+applyLayout();
 
 // ---------- 탭 ----------
 function go(v) {
