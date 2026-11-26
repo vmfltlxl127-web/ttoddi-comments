@@ -31,10 +31,16 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: node fol.mjs /tmp/folstate.json
       - name: 상태 저장 (folstate 브랜치)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          rm -rf /tmp/st && mkdir /tmp/st && cd /tmp/st
+          git init -q
           git config user.name "keysbrown-bot"
           git config user.email "keysbrown-bot@users.noreply.github.com"
-          if git show-ref --quiet refs/heads/folstate; then git checkout -qf folstate; else git checkout -q --orphan folstate && git rm -rqf --cached . >/dev/null 2>&1; git clean -fdq; fi
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}"
+          git fetch -q --depth 1 origin folstate 2>/dev/null && git checkout -q FETCH_HEAD || true
+          git checkout -q -B folstate
           cp /tmp/folstate.json folstate.json
           git add folstate.json
-          git diff --cached --quiet || { git commit -qm "팔로워 상태" && git push -q origin folstate; }
+          if git diff --cached --quiet; then echo "변화 없음"; else git commit -qm "팔로워 상태" && git push -q origin folstate; fi
