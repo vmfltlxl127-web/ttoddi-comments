@@ -671,7 +671,7 @@ function renderList() {
     c._sug = { list: sug };
     const quick = tpls();
     return `<div class="swrap" data-id="${esc(c.id)}"><button type="button" class="crm" data-act="skip">제거</button><article class="cmt wait" data-id="${esc(c.id)}">${head}
-      <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot emo" data-act="sug" data-i="${i}">${esc(t)}</button>`).join('')}<button type="button" class="chip sm" data-act="more">더보기</button></div>
+      <div class="chips">${sug.map((t, i) => `<button type="button" class="chip hot emo" data-act="sug" data-i="${i}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip sm" data-act="more">더보기</button></div>
       <div class="chips hide" data-role="more">${quick.map(t => `<button type="button" class="chip sm" data-act="quick" data-t="${esc(t)}">${esc(t)}</button>`).join('')}<button type="button" class="chip ghost small" data-act="tpl">✎ 문구 편집</button><button type="button" class="chip ghost small" data-thread="${esc(c.mediaId)}" data-focus="${esc(c.id)}">💬 영상 댓글</button></div>
       <div class="rbox"><textarea placeholder="답글 쓰기…" aria-label="답글">${esc(drafts[c.id] || '')}</textarea><button type="button" data-act="send">전송</button></div>
       <p class="msg" data-role="msg"></p></article></div>`;
@@ -711,7 +711,8 @@ $('list').addEventListener('click', async e => {
   }
   if (b.dataset.act === 'reroll') { c._sug = suggest(c); delete c._sug3; renderList(); return; }
   if (b.dataset.act === 'sug' || b.dataset.act === 'quick') {
-    const t = b.dataset.act === 'sug' ? c._sug.list[+b.dataset.i] : b.dataset.t;
+    // 화면에 적힌 글자를 그대로 씀 (백그라운드 새로고침으로 댓글 목록이 바뀌어도 안 끊기게)
+    const t = b.dataset.t || c?._sug?.list?.[+b.dataset.i]; if (!t || !ta || !c) return;
     const cur = ta.value.trim(), base = `@${c.username}`;
     // 내가 쓴 글이 있으면 뒤에 붙이고, 비었거나 추천만 들어있으면 바꾸기
     const isEmo = /^\p{Extended_Pictographic}/u.test(t);
